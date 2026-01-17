@@ -1,0 +1,27 @@
+# Dependências do Node (Pesado, nunca envie!)
+node_modules/
+npm-debug.log
+
+# Builds de produção
+dist/
+build/
+
+# Variáveis de Ambiente e Segredos (CRÍTICO!)
+.env
+.env.local
+.env.*.local
+
+# Arquivos de Sistema Operacional
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+
+# Supabase (Arquivos locais gerados)
+supabase/.temp/
