@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import DefaultLayout from './layouts/DefaultLayout.vue'
 import Dashboard from './components/Dashboard.vue';
-
-
 </script>
 
 <template>
-  <Dashboard />
+  <DefaultLayout>
+    <Dashboard />
+  </DefaultLayout>
 </template>
 
 <style>
@@ -13,7 +14,6 @@ import Dashboard from './components/Dashboard.vue';
 body {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
-  background-color: #F3F4F6; /* Cor de fundo cinza claro igual do dashboard */
+  -webkit-font-smoothing: antialiased;
 }
 </style>

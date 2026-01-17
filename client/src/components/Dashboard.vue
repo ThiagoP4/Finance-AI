@@ -14,36 +14,34 @@
   const pieSeries = [62, 19, 12, 8] // Dados exemplo
   const pieOptions: ApexOptions = {
     labels: ['Alimentação', 'Transporte', 'Lazer', 'Outros'],
-    colors: ['#2563EB', '#10B981', '#8B5CF6', '#EF4444'],
-    chart: {type: 'donut'},
-    legend: {position: 'bottom'},
+    colors: ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'],
+    chart: {type: 'donut', fontFamily: 'Inter, sans-serif'},
+    legend: {position: 'bottom', fontSize: '14px'},
     dataLabels: {enabled: false},
-    plotOptions: { pie: { donut: { size: '65%' } } }
+    stroke: { show: false },
+    plotOptions: { pie: { donut: { size: '70%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '16px', fontWeight: 600 } } } } }
     }
 
   // --- CONFIGURAÇÃO DO GRÁFICO DE LINHAS ---
   const lineSeries = [{ name: 'Gastos', data: [500, 700, 800, 600, 900, 1100, 1300]}]
   const lineOptions: ApexOptions = {
-    chart: { type: 'area', toolbar: { show: false } }, // Toolbar false remove o menu de download
-    stroke: { curve: 'smooth' }, // Deixa a linha curva
-    colors: ['#2563EB'], // Azul
+    chart: { type: 'area', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' }, // Toolbar false remove o menu de download
+    stroke: { curve: 'smooth', width: 3 }, // Deixa a linha curva
+    colors: ['#3B82F6'], // Azul
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
     dataLabels: { enabled: false },
-    xaxis: { categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai'] },
-    grid: { show: true, borderColor: '#f1f1f1' }
+    xaxis: { 
+      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul'], 
+      axisBorder: { show: false },
+      axisTicks: { show: false }
+    },
+    grid: { show: true, borderColor: '#F1F5F9', strokeDashArray: 4 },
+    tooltip: { theme: 'light' }
   }
 
 </script>
 
 <template>
-  <nav class="navbar">
-    <div class="logo">Finance AI</div>
-    <ul class="nav-links">
-      <li><a href="/dashboard">Dashboard</a></li>
-      <li><a href="/purchase">Nova Compra</a></li>
-    </ul>
-    <button class="logout-btn">Sair</button>
-  </nav>
-
   <main class="container">
 
     <header class="page-header">
@@ -56,28 +54,28 @@
       <div class="stat-card blue">
         <div class="card-header">
           <h2>Total de Gastos</h2>
-          <PhCurrencyDollar size="32" weight="bold"></PhCurrencyDollar>
+          <PhCurrencyDollar size="32" weight="fill"></PhCurrencyDollar>
         </div>
         <p class="value">R$ 5.000,00</p>
       </div>
       <div class="stat-card green">
         <div class="card-header">
           <h2>Compras Realizadas</h2>
-          <PhShoppingCart size="32" weight="bold"></PhShoppingCart>
+          <PhShoppingCart size="32" weight="fill"></PhShoppingCart>
         </div>
         <p class="value">5</p>
       </div>
       <div class="stat-card purple">
         <div class="card-header">
           <h2>Média por Compra</h2>
-          <PhChartLine size="32" weight="bold"></PhChartLine>
+          <PhChartLine size="32" weight="fill"></PhChartLine>
         </div>
         <p class="value">R$ 1.000,00</p>
       </div>
       <div class="stat-card red">
         <div class="card-header">
           <h2>Tendência de Consumo</h2>
-          <PhTrendUp size="32" weight="bold"></PhTrendUp>
+          <PhTrendUp size="32" weight="fill"></PhTrendUp>
         </div>
         <p class="value">Em alta</p>
       </div>
@@ -103,26 +101,6 @@
 </template>
 
 <style scoped>
-
-  .navbar {
-    background-color: #2c3e50;
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: white;
-  }
-
-  .nav-links {
-    list-style: none;
-    display: flex;
-    gap: 20px;
-  }
-  .nav-links a {
-    color: white;
-    text-decoration: none;
-    font-weight: bold;
-  }
 
   .container {
     padding: 2rem;
