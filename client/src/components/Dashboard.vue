@@ -1,5 +1,9 @@
 <script setup lang="ts">
 
+  import { ref, onMounted } from 'vue';
+  import axios from 'axios';
+  
+
   import {
     PhCurrencyDollar,
     PhShoppingCart,
@@ -10,34 +14,81 @@
   import VueApexCharts from 'vue3-apexcharts'
   import type { ApexOptions } from 'apexcharts'
 
+  const dashboardData = ref({
+    total: 0,
+    count: 0,
+    ticketMedio: 0,
+    pieChart: {
+      series: [] as number[],
+      labels: [] as string[],
+      colors: [] as string[]
+    },
+    lineChart: {
+      series: [] as any[],
+      categories: [] as string[]
+    }
+  });
+
   // --- CONFIGURAÇÃO DO GRÁFICO DE PIZZA (DONUT) ---
   const pieSeries = [62, 19, 12, 8] // Dados exemplo
-  const pieOptions: ApexOptions = {
-    labels: ['Alimentação', 'Transporte', 'Lazer', 'Outros'],
-    colors: ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'],
+
+  const pieOptions = ref<ApexOptions>({
+    labels: [],
+    colors: [],
     chart: {type: 'donut', fontFamily: 'Inter, sans-serif'},
     legend: {position: 'bottom', fontSize: '14px'},
     dataLabels: {enabled: false},
     stroke: { show: false },
     plotOptions: { pie: { donut: { size: '70%', labels: { show: true, total: { show: true, label: 'Total', fontSize: '16px', fontWeight: 600 } } } } }
-    }
+    });
 
   // --- CONFIGURAÇÃO DO GRÁFICO DE LINHAS ---
-  const lineSeries = [{ name: 'Gastos', data: [500, 700, 800, 600, 900, 1100, 1300]}]
-  const lineOptions: ApexOptions = {
+
+  const lineOptions =  ref<ApexOptions>({
     chart: { type: 'area', toolbar: { show: false }, fontFamily: 'Inter, sans-serif' }, // Toolbar false remove o menu de download
     stroke: { curve: 'smooth', width: 3 }, // Deixa a linha curva
     colors: ['#3B82F6'], // Azul
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
     dataLabels: { enabled: false },
     xaxis: { 
-      categories: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul'], 
+      categories: [], 
       axisBorder: { show: false },
       axisTicks: { show: false }
     },
     grid: { show: true, borderColor: '#F1F5F9', strokeDashArray: 4 },
-    tooltip: { theme: 'light' }
-  }
+    tooltip: { 
+      theme: 'light',
+      x: { format: 'dd/MM/yyyy' }
+     }
+  });
+
+  const fetchData = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/dashboard');
+      const apiData = response.data;
+      
+      dashboardData.value = apiData;
+      pieOptions.value = {
+        ...pieOptions.value,
+        labels: apiData.pieChart.labels,
+        colors: apiData.pieChart.colors
+      };
+      lineOptions.value = {
+        ...lineOptions.value,
+        xaxis: { 
+          ...lineOptions.value.xaxis,
+          categories: apiData.lineChart.categories 
+        }
+      };
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error);
+      alert("Erro ao conectar com o servidor. Verifique se o Backend está rodando.");
+    }
+  };
+
+  onMounted(() => {
+    fetchData();
+  });
 
 </script>
 
@@ -56,7 +107,7 @@
           <h2>Total de Gastos</h2>
           <PhCurrencyDollar size="32" weight="fill"></PhCurrencyDollar>
         </div>
-        <p class="value">R$ 5.000,00</p>
+        <p class="value">R$ {{ dashboardData.total.toFixed(2) }}</p>
       </div>
       <div class="stat-card green">
         <div class="card-header">
@@ -70,7 +121,7 @@
           <h2>Média por Compra</h2>
           <PhChartLine size="32" weight="fill"></PhChartLine>
         </div>
-        <p class="value">R$ 1.000,00</p>
+        <p class="value">{{ dashboardData.ticketMedio.toFixed(2) }}</p>
       </div>
       <div class="stat-card red">
         <div class="card-header">
@@ -92,7 +143,7 @@
       <div class="chart-wrapper">
         <h2>Análises Detalhadas por Categoria</h2>
         <div class="charts-placeholder">
-          <VueApexCharts type="area" height="300" :options="lineOptions" :series="lineSeries" />
+          <VueApexCharts type="area" height="300" :options="lineOptions" :series="lineOptions" />
         </div>
       </div>
     </section>
