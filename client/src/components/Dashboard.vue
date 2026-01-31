@@ -18,6 +18,12 @@
     total: 0,
     count: 0,
     ticketMedio: 0,
+    trend: {
+      status: 'stable',
+      text: 'Analisando...',
+      current: 0,
+      last: 0
+    },
     pieChart: {
       series: [] as number[],
       labels: [] as string[],
@@ -30,7 +36,8 @@
   });
 
   // --- CONFIGURAÇÃO DO GRÁFICO DE PIZZA (DONUT) ---
-  const pieSeries = [62, 19, 12, 8] // Dados exemplo
+  const pieSeries = ref<number[]>([]);
+
 
   const pieOptions = ref<ApexOptions>({
     labels: [],
@@ -68,6 +75,7 @@
       const apiData = response.data;
       
       dashboardData.value = apiData;
+      pieSeries.value = apiData.pieChart.series;
       pieOptions.value = {
         ...pieOptions.value,
         labels: apiData.pieChart.labels,
@@ -123,12 +131,21 @@
         </div>
         <p class="value">{{ dashboardData.ticketMedio.toFixed(2) }}</p>
       </div>
-      <div class="stat-card red">
+      <div class="stat-card" :class="{
+        'red': dashboardData.trend.status === 'up',
+        'green': dashboardData.trend.status === 'down',
+        'blue': dashboardData.trend.status === 'stable'
+      }">
         <div class="card-header">
           <h2>Tendência de Consumo</h2>
-          <PhTrendUp size="32" weight="fill"></PhTrendUp>
+          <PhTrendUp size="32" weight="fill" v-if="dashboardData.trend.status === 'up'"></PhTrendUp>
+          <PhTrendDown size="32" weight="fill" v-else-if="dashboardData.trend.status === 'down'"></PhTrendDown>
+          <PhArrowRight size="32" weight="fill" v-else></PhArrowRight>
         </div>
-        <p class="value">Em alta</p>
+        <p class="value">{{ dashboardData.trend.text }}</p>
+        <span style="font-size: 0.8rem; opacity: 0.8;">
+          Mês anterior R$ {{ dashboardData.trend.last.toFixed(2) }}
+        </span>
       </div>
     </section>
 
@@ -143,7 +160,7 @@
       <div class="chart-wrapper">
         <h2>Análises Detalhadas por Categoria</h2>
         <div class="charts-placeholder">
-          <VueApexCharts type="area" height="300" :options="lineOptions" :series="lineOptions" />
+          <VueApexCharts type="area" height="300" :options="lineOptions" :series="dashboardData.lineChart.series" />
         </div>
       </div>
     </section>

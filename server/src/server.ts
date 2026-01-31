@@ -27,11 +27,46 @@ app.use(cors());
 // quando o frontend chamar essa rota, o backend vai responder com os dados do dashboard
 app.get('/dashboard', async (req, res) => {
     try {
+        const now = new Date();
+        const startCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
         // 1. Total Gasto (Soma de tudo)
         const totalAggregation = await prisma.purchase.aggregate({
             _sum: { value: true },
             _count: { idPurchase: true },
         });
+
+        const currentMonthData = await prisma.purchase.aggregate({
+            _sum: { value: true },
+            where: { date: { gte: startCurrentMonth } }
+            });
+
+        const lastMonthData = await prisma.purchase.aggregate({
+            _sum: { value: true },
+            where: {
+                date: {
+                    gte: startLastMonth,
+                    lte: endLastMonth,
+                }
+            }
+            });
+
+        const currentVal = currentMonthData._sum.value || 0;
+        const lastVal = lastMonthData._sum.value || 0;
+
+        let trendStatus = 'stable';
+        let trendText = 'Estável';
+
+        if (currentVal > lastVal + 10) {
+            trendStatus = 'up';
+            trendText = 'Em alta';
+        } else if (currentVal < lastVal - 10) {
+            trendStatus = 'down';
+            trendText = 'Em queda';
+        }
+
         // 2. Gastos por Categoria (Para o gráfico de Pizza)
         const byCategory = await prisma.purchase.groupBy({
             by: ['categoryId'],
@@ -71,6 +106,12 @@ app.get('/dashboard', async (req, res) => {
             total: totalAggregation._sum.value || 0,
             count: totalAggregation._count.idPurchase || 0,
             ticketMedio: (totalAggregation._sum.value || 0) / (totalAggregation._count.idPurchase || 1),
+            trend: {
+                status: trendStatus,
+                text: trendText,
+                current: currentVal,
+                last: lastVal
+            },
             pieChart: { series: pieSeries, labels: pieLabels, colors: pieColors },
             lineChart: { series: lineSeries, categories: lineCategories },
             });
