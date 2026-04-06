@@ -61,7 +61,11 @@ onMounted(() => {
     .loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; color: var(--primary-color); }
     .loading-overlay p { margin-top: 1rem; color: var(--text-secondary); font-weight: 500; font-size: 1.1rem; }
     
-    .profile-dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: start; }
+    .profile-dashboard-grid { 
+        display: grid; 
+        grid-template-columns: 1fr; 
+        gap: 2rem; 
+        align-items: start; }
     .column-stack { display: flex; flex-direction: column; gap: 2rem; }
     
     @media (min-width: 1024px) {

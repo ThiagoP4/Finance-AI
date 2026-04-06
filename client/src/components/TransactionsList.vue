@@ -1,6 +1,7 @@
  <script setup lang="ts">
-    import { computed } from 'vue';
+    import { computed, ref } from 'vue';
     import { PhArrowUpRight, PhPencilSimple, PhTrash, PhCheckCircle, PhCircle } from '@phosphor-icons/vue';
+    import ConfirmModal from './ConfirmModal.vue';
 
     const props = defineProps<{
         items: any[];
@@ -18,6 +19,22 @@
 
     const toBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL'}).format(v);
     const toDate = (d: string) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '-';
+
+    const isConfirmingDelete = ref(false);
+    const itemToDelete = ref<number | string | null>(null);
+
+    const confirmDelete = (id: number | string) => {
+        itemToDelete.value = id;
+        isConfirmingDelete.value = true;
+    };
+
+    const executeDelete = () => {
+        if (itemToDelete.value) {
+            emit('delete', itemToDelete.value);
+        }
+        isConfirmingDelete.value = false;
+        itemToDelete.value = null;
+    };
 </script>
 
 <template>
@@ -60,7 +77,7 @@
                     <button class="icon-btn edit-btn" @click="emit('edit', item)" title="Editar">
                         <PhPencilSimple size="18" />
                     </button>
-                    <button class="icon-btn delete-btn" @click="emit('delete', item.idPurchase || item.idIncome)" title="Excluir">
+                    <button class="icon-btn delete-btn" @click="confirmDelete(item.idPurchase || item.idIncome)" title="Excluir">
                         <PhTrash size="18" />
                     </button>
                  </div>
@@ -70,6 +87,14 @@
         <div v-if="items.length === 0" class="empty-state">
             Nenhum registro encontrado neste mês.
         </div>
+
+        <ConfirmModal 
+            :isOpen="isConfirmingDelete"
+            title="Excluir Registro?"
+            message="Esta ação apagará este registro financeiro permanentemente. Tem certeza que deseja continuar?"
+            @confirm="executeDelete"
+            @cancel="isConfirmingDelete = false"
+        />
     </div>
 </template>
 

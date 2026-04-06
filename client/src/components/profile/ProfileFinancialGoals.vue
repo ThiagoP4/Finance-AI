@@ -1,7 +1,9 @@
  <script setup lang="ts">
-    import { ref } from 'vue';
+    import { ref, computed } from 'vue';
     import { useProfileStore } from '../../stores/useProfileStore';
     import { useAlertStore } from '../../stores/useAlertStore';
+    import { PhRocketLaunch, PhClockCounterClockwise, PhCheckCircle, PhPencilSimple, PhTrash } from '@phosphor-icons/vue';
+    import ConfirmModal from '../ConfirmModal.vue';
 
     const profileStore = useProfileStore();
     const alertStore = useAlertStore();
@@ -11,6 +13,55 @@
     const newGoalAmount = ref<number | null>(null);
     const newGoalDeadline = ref('');
     const isSaving =  ref(false);
+    const activeTab = ref('active');
+    const today = new Date().toISOString().split('T')[0];
+
+    const editingGoalId = ref<string | null>(null); // Armazena o ID se estivermos editando, ou null se for criação
+
+
+    const activeGoals = computed(() => {
+        return profileStore.financialGoals.filter(g => g.status === 'em andamento');
+    });
+
+    const historyGoals = computed(() => {
+        return profileStore.financialGoals.filter(g => g.status === 'concluída');
+    });
+
+    const currentGoals = computed(() => {
+        return activeTab.value === 'active' ? activeGoals.value : historyGoals.value;
+    });
+
+    const completeGoal = async (id: string) => {
+        alertStore.showAlert('Celebrando sua vitória...', 'success');
+        await profileStore.updateFinancialGoal(id, { status: 'concluída' });
+    };
+
+    const startEditGoal = (goal: any) => {
+        editingGoalId.value = goal.id_goal;
+        newGoalDescription.value = goal.description;
+        newGoalAmount.value = goal.target_amount;
+        newGoalDeadline.value = goal.deadline.split('T')[0]; // Pega apenas a data YYYY-MM-DD
+        showAddForm.value = true; // Abre o formulário
+    };
+
+    const isConfirmingDelete = ref(false);
+    const goalToDelete = ref<string | null>(null);
+
+    const confirmDeleteGoal = (id: string) => {
+        goalToDelete.value = id;
+        isConfirmingDelete.value = true;
+    };
+
+    const executeDelete = async () => {
+        if (goalToDelete.value) {
+            alertStore.showAlert('Apagando...', 'warning');
+            await profileStore.deleteFinancialGoal(goalToDelete.value);
+            isConfirmingDelete.value = false;
+            goalToDelete.value = null;
+            alertStore.showAlert('Meta removida com sucesso.', 'success');
+        }
+    };
+
 
     const toggleAddForm = () => {
         showAddForm.value = !showAddForm.value;
@@ -20,7 +71,7 @@
             newGoalAmount.value = null;
             newGoalDeadline.value = '';
         }
-    }
+    };
 
     const saveNewGoal = async () => {
         if(!newGoalDescription.value || !newGoalAmount.value || !newGoalDeadline.value) {
@@ -28,27 +79,43 @@
             return;
         }
         isSaving.value = true;
-        alertStore.showAlert('Registrando sua meta...', 'warning');
 
-        const result = await profileStore.saveFinancialGoal(
-            newGoalDescription.value,
-            newGoalAmount.value,
-            newGoalDeadline.value
-        );
+        let result;
+
+            
+        if (editingGoalId.value) {
+            result = await profileStore.updateFinancialGoal(editingGoalId.value, {
+            description: newGoalDescription.value,
+            target_amount: newGoalAmount.value,
+            deadline: newGoalDeadline.value
+        });
+
+        } else {
+            result = await profileStore.saveFinancialGoal(
+                newGoalDescription.value,
+                newGoalAmount.value,
+                newGoalDeadline.value
+            );
+        }
+
 
         if (result.success) {
-            alertStore.showAlert('Nova meta estabelecida com sucesso!', 'success');
-            newGoalDescription.value = '';
-            newGoalAmount.value = null;
-            newGoalDeadline.value = '';
-            
-            // Suavemente oculta a gaveta após bater no Banco de forma bem sucedida
-            showAddForm.value = false;
+            alertStore.showAlert(editingGoalId.value ? 'Meta atualizada!' : 'Meta criada!', 'success');
+            resetForm();
+           
         } else {
             alertStore.showAlert('Erro ao recrutar a meta: ' + result.message, 'error');
         }
         isSaving.value = false;
     }
+
+    const resetForm = () => {
+        editingGoalId.value = null;
+        newGoalDescription.value = '';
+        newGoalAmount.value = null;
+        newGoalDeadline.value = '';
+        showAddForm.value = false;
+    };
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -67,18 +134,56 @@
     <div class="profile-card">
         <div class="card-header-actions">
             <h2>Metas Financeiras</h2>
-            <button class="btn-secondary" @click="toggleAddForm">
-                {{ showAddForm ? 'Visualizar minhas metas' : '+ Adicionar Nova' }}
-            </button>
+            <div class="header-controls">
+                <div class="card-tabs">
+                    <button
+                        :class="{ active: activeTab === 'active' }"
+                        @click="activeTab = 'active'"
+                        title="Em aberto"
+                    >
+                        <PhRocketLaunch :size="18" />
+                        <span class="tab-count">({{ activeGoals.length }})</span>
+                    </button>
+                        <button 
+                        :class="{ active: activeTab === 'history' }" 
+                        @click="activeTab = 'history'"
+                        title="historico"
+                    >
+                        <PhClockCounterClockwise :size="18" />
+                        <span class="tab-count">({{ historyGoals.length }})</span>
+                    </button>
+                </div>
+                <button class="btn-outline-small" @click="toggleAddForm">
+                    {{ showAddForm ? 'Visualizar minhas metas' : '+ Adicionar' }}
+                </button>
+            </div>
         </div>
         <div class="card-body-wrapper">
             <!-- Camada 1: A Lista (Sobreposta nativamente pelo Grid) -->
             <div class="profile-card-content goals-container view-layer" :class="{ 'view-hidden': showAddForm }">
                 <div v-if="profileStore.financialGoals && profileStore.financialGoals.length > 0" class="goals-list">
-                    <div v-for="goal in profileStore.financialGoals" :key="goal.id_goal" class="goal-item-card">
-                        <div class="goal-header">
+                    <div v-for="goal in currentGoals" :key="goal.id_goal" class="goal-item-card">
+                        <div class="goal-header-wrapper">
+                            <div class="goal-header-meta">
+                                <span class="goal-status" :class="goal.status.replace(/ /g, '-').toLowerCase()">{{ goal.status }}</span>
+                                <div class="goal-actions-top">
+                                    <button v-if="goal.status === 'em andamento'" 
+                                        class="action-btn check" 
+                                        @click="completeGoal(goal.id_goal)" 
+                                        title="Marcar como concluída">
+                                        <PhCheckCircle :size="18" />
+                                    </button>
+                                    
+                                    <button class="action-btn edit" @click="startEditGoal(goal)" title="Editar meta">
+                                        <PhPencilSimple :size="18" />
+                                    </button>
+                                    
+                                    <button class="action-btn delete" @click="confirmDeleteGoal(goal.id_goal)" title="Excluir meta">
+                                        <PhTrash :size="18" />
+                                    </button>
+                                </div>
+                            </div>
                             <span class="goal-title">{{ goal.description }}</span>
-                            <span class="goal-status" :class="goal.status.replace(/ /g, '-').toLowerCase()">{{ goal.status }}</span>
                         </div>
                         <div class="goal-details">
                             <div class="detail-col">
@@ -111,7 +216,7 @@
                     </div>
                     <div class="profile-card-content-item">
                         <label for="goal_deadline">Data Limite</label>
-                        <input type="date" id="goal_deadline" v-model="newGoalDeadline" required>
+                        <input type="date" id="goal_deadline" v-model="newGoalDeadline" :min="today" required>
                     </div>
                 </div>
                 <div class="form-actions-row">
@@ -122,6 +227,14 @@
                 </div>
             </form>
         </div>
+
+        <ConfirmModal 
+            :isOpen="isConfirmingDelete"
+            title="Excluir Meta?"
+            message="Essa ação deletará esta meta financeira permanentemente do banco de dados. Deseja mesmo continuar?"
+            @confirm="executeDelete"
+            @cancel="isConfirmingDelete = false"
+        />
     </div>
 </template>
 
@@ -133,8 +246,57 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
-    min-height: 100%;
 }
+
+.card-tabs {
+    display: flex;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+}
+
+.card-tabs button {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem 0.8rem;
+    border-radius: 0.5rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.card-tabs button.active {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.goal-header-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.goal-actions-top {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.action-btn.check:hover { color: #22c55e; border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+.action-btn.edit:hover { color: #3b82f6; border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+.action-btn.delete:hover { color: #ef4444; border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
     
 .card-header-actions {
     display: flex;
@@ -189,6 +351,8 @@
     visibility: hidden;
     pointer-events: none;
     transform: translateX(-10px);
+    position: absolute;
+    width: 100%;
 }
 
 .goals-container {
@@ -270,6 +434,12 @@
     margin: 0;
 }
 
+.tab-count {
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-left: 4px;
+}
+
 ::-webkit-calendar-picker-indicator {
     filter: invert(0.8);
     cursor: pointer;
@@ -334,20 +504,25 @@
 }
 
 .goal-item-card:hover {
-    border-color: rgba(255,255,255,0.2);
-    transform: translateY(-2px);
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.04);
+    transform: none;
 }
     
-.goal-header {
+.goal-header-wrapper {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
 .goal-title {
     font-weight: 600;
     font-size: 1.05rem;
     color: var(--text-primary);
+    flex: 1;
+    white-space: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
 }
     
 .goal-status {
@@ -357,6 +532,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    flex-shrink: 0;
 }
 
 .goal-status.em-andamento {
@@ -365,10 +541,11 @@
     border: 1px solid rgba(234, 179, 8, 0.3);
 }
 
-.goal-status.concluida {
-    background: rgba(34, 197, 94, 0.15);
-    color: #22c55e;
-    border: 1px solid rgba(34, 197, 94, 0.3);
+.goal-status.concluída {
+    background: rgba(34, 197, 94, 0.15) !important;
+    color: #22c55e !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+    font-weight: 700;
 }
     
 .goal-details {
@@ -406,4 +583,5 @@
     color: #fff;
     font-weight: 600;
 }
+
 </style>

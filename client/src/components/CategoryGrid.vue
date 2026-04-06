@@ -1,8 +1,26 @@
 <script setup lang="ts">
+    import { ref } from 'vue';
     import { PhPalette, PhTrash } from '@phosphor-icons/vue';
+    import ConfirmModal from './ConfirmModal.vue';
 
     defineProps<{ items: any[] }>();
     const emit = defineEmits(['add', 'delete']);
+
+    const isConfirmingDelete = ref(false);
+    const itemToDelete = ref<number | string | null>(null);
+
+    const confirmDelete = (id: number | string) => {
+        itemToDelete.value = id;
+        isConfirmingDelete.value = true;
+    };
+
+    const executeDelete = () => {
+        if (itemToDelete.value) {
+            emit('delete', itemToDelete.value);
+        }
+        isConfirmingDelete.value = false;
+        itemToDelete.value = null;
+    };
 
 
 </script>
@@ -15,11 +33,19 @@
                     <PhPalette size="20" :style="{ color: cat.color }" weight="fill" />
                     <span class="title">{{ cat.description }}</span>
                 </div>
-                <button class="icon-btn delete-btn" @click="emit('delete', cat.idCategory)" title="Excluir">
+                <button class="icon-btn delete-btn" @click="confirmDelete(cat.idCategory)" title="Excluir">
                     <PhTrash size="18" />
                 </button>
             </div>
         </div>
+
+        <ConfirmModal 
+            :isOpen="isConfirmingDelete"
+            title="Excluir Categoria?"
+            message="Ao excluir esta categoria, os registros vinculados a ela poderão perder a referência. Tem certeza que deseja continuar?"
+            @confirm="executeDelete"
+            @cancel="isConfirmingDelete = false"
+        />
     </div>
 </template>
 

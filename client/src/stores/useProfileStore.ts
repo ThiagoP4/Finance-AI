@@ -88,6 +88,45 @@ export const useProfileStore = defineStore('profile', {
                 console.error('Erro ao salvar meta financeira', error);
                 return { success: false, message: error.message }
             }
+        },
+        async updateFinancialGoal(id_goal: string, updates: any) {
+            try {
+                const { data, error } = await supabase
+                    .from('usr_goal')
+                    .update(updates)
+                    .eq('id_goal', id_goal)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                const index = this.financialGoals.findIndex(g => g.id_goal === id_goal);
+                if (index !== -1) {
+                    this.financialGoals[index] = data;
+                }
+                return { success: true };
+
+            } catch (error: any) {
+                console.error('Erro ao atualizar meta:', error);
+                return { success: false, message: error.message };
+            }
+        },
+        async deleteFinancialGoal(id_goal: string) {
+            try {
+                const { error } = await supabase
+                    .from('usr_goal')
+                    .delete()
+                    .eq('id_goal', id_goal);
+
+                if (error) throw error;
+
+                this.financialGoals = this.financialGoals.filter(g => g.id_goal !== id_goal);
+
+                return { success: true }
+            } catch (error: any) {
+                console.error('Erro ao deletar meta:', error)
+                return { success: false, message: error.message };
+            }
         }
     }
 });
