@@ -154,7 +154,7 @@
                     </button>
                 </div>
                 <button class="btn-outline-small" @click="toggleAddForm">
-                    {{ showAddForm ? 'Visualizar minhas metas' : '+ Adicionar Nova' }}
+                    {{ showAddForm ? 'Visualizar minhas metas' : '+ Adicionar' }}
                 </button>
             </div>
         </div>

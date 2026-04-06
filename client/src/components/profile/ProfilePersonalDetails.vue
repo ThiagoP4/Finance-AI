@@ -6,6 +6,29 @@ import { useProfileStore } from '../../stores/useProfileStore';
 const alertStore = useAlertStore();
 const profileStore = useProfileStore();
 
+const applyCpfMask = () => {
+    let v = profileStore.userCpf?.replace(/\D/g, '') || '';
+    if (v.length > 11) v = v.slice(0, 11);
+    
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    
+    profileStore.userCpf = v;
+};
+
+const applyPhoneMask = () => {
+    let v = profileStore.userSecondPhone?.replace(/\D/g, '') || '';
+    if (v.length > 11) v = v.slice(0, 11);
+    
+    if (v.length > 2) {
+        v = v.replace(/^(\d{2})(\d)/g, '($1) $2');
+        v = v.replace(/(\d)(\d{4})$/, '$1-$2');
+    }
+    
+    profileStore.userSecondPhone = v;
+};
+
 const savePersonalData = async () => {
     alertStore.showAlert('Salvando seus dados...', 'warning');
     try {
@@ -57,7 +80,7 @@ const savePersonalData = async () => {
                 </div>
                 <div class="profile-card-content-item full-width">
                     <label for="cpf">CPF</label>
-                    <input type="text" id="cpf" v-model="profileStore.userCpf">
+                    <input type="text" id="cpf" v-model="profileStore.userCpf" @input="applyCpfMask" maxlength="14" placeholder="000.000.000-00">
                 </div>
                 <!-- O Telefone principal é somente leitura e puxado do Auth -->
                 <div class="profile-card-content-item">
@@ -66,7 +89,7 @@ const savePersonalData = async () => {
                 </div>
                 <div class="profile-card-content-item">
                     <label for="second_phone">Telefone Adicional</label>
-                    <input type="tel" id="second_phone" v-model="profileStore.userSecondPhone" placeholder="(XX) 99999-9999">
+                    <input type="tel" id="second_phone" v-model="profileStore.userSecondPhone" @input="applyPhoneMask" maxlength="15" placeholder="(XX) 99999-9999">
                 </div>
             </div>
             <!-- Esse botão ativa a function ali em cima que salva os dados da nuvem puxando do Store VUE -->
