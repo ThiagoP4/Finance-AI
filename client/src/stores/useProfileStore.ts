@@ -127,6 +127,69 @@ export const useProfileStore = defineStore('profile', {
                 console.error('Erro ao deletar meta:', error)
                 return { success: false, message: error.message };
             }
+        },
+        async savePaymentMethod(nickname: string, bank_name: string, method_type: string) {
+            if (!this.userId) return { success: false, message: 'Usuário não autenticado.' };
+            try {
+                const { data, error } = await supabase
+                    .from('usr_payment')
+                    .insert({
+                        user_id: this.userId,
+                        nickname: nickname,
+                        bank_name: bank_name,
+                        method_type: method_type
+                    })
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                this.myCards.push(data)
+                return { success: true }
+            } catch (error: any) {
+                console.error('Erro ao salvar método de pagamento', error);
+                return { success: false, message: error.message }
+            }
+        },
+        async updatePaymentMethod(id_payment: number, updates: any) {
+            try {
+                const { data, error } = await supabase
+                    .from('usr_payment')
+                    .update(updates)
+                    .eq('id_payment', id_payment)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                const index = this.myCards.findIndex(g => g.id_payment === id_payment);
+
+                if (index !== -1) {
+                    this.myCards[index] = data;
+                }
+                return { success: true };
+            } catch (error: any) {
+                console.error('Erro ao atualizar Pagamentos:', error)
+                return { success: false, message: error.message };
+            }
+        },
+        async deletePaymentMethod(id_payment: number) {
+            try {
+                const { error } = await supabase
+                    .from('usr_payment')
+                    .delete()
+                    .eq('id_payment', id_payment)
+
+                if (error) throw error;
+
+                this.myCards = this.myCards.filter(g => g.id_payment !== id_payment);
+
+                return { success: true }
+
+            } catch (error: any) {
+                console.error('Erro ao deletar pagamento:', error)
+                return { success: false, message: error.message };
+            }
         }
     }
 });

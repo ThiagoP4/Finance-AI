@@ -62,7 +62,6 @@
         }
     };
 
-
     const toggleAddForm = () => {
         showAddForm.value = !showAddForm.value;
         
@@ -97,7 +96,6 @@
                 newGoalDeadline.value
             );
         }
-
 
         if (result.success) {
             alertStore.showAlert(editingGoalId.value ? 'Meta atualizada!' : 'Meta criada!', 'success');
@@ -144,7 +142,7 @@
                         <PhRocketLaunch :size="18" />
                         <span class="tab-count">({{ activeGoals.length }})</span>
                     </button>
-                        <button 
+                    <button 
                         :class="{ active: activeTab === 'history' }" 
                         @click="activeTab = 'history'"
                         title="historico"
@@ -154,7 +152,7 @@
                     </button>
                 </div>
                 <button class="btn-outline-small" @click="toggleAddForm">
-                    {{ showAddForm ? 'Visualizar minhas metas' : '+ Adicionar' }}
+                    {{ showAddForm ? 'Visualizar metas' : '+ Adicionar' }}
                 </button>
             </div>
         </div>
