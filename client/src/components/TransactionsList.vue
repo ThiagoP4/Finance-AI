@@ -57,6 +57,9 @@
                     <span class="title">{{ item.title }}</span>
                     <span class="subtitle">
                         <template v-if="item.fin_category?.description">{{ item.fin_category.description }} &bull; </template>
+                        <template v-if="item.payment?.nickname">
+                            <span class="payment-tag">{{ item.payment.nickname }}</span> &bull; 
+                        </template>
                         {{ toDate(item.date) }}
                     </span>
                  </div>
@@ -162,6 +165,18 @@
     .record-info .subtitle { 
         font-size: 0.8rem; 
         color: var(--text-secondary); 
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .payment-tag {
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 1px 6px;
+        border-radius: 4px;
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 0.75rem;
     }
 
     .record-actions { 

@@ -128,7 +128,7 @@ export const useProfileStore = defineStore('profile', {
                 return { success: false, message: error.message };
             }
         },
-        async savePaymentMethod(nickname: string, bank_name: string, method_type: string) {
+        async savePaymentMethod(nickname: string, bank_name: string, method_type: string, closing_day?: number, due_day?: number) {
             if (!this.userId) return { success: false, message: 'Usuário não autenticado.' };
             try {
                 const { data, error } = await supabase
@@ -137,7 +137,9 @@ export const useProfileStore = defineStore('profile', {
                         user_id: this.userId,
                         nickname: nickname,
                         bank_name: bank_name,
-                        method_type: method_type
+                        method_type: method_type,
+                        closing_day: closing_day || null,
+                        due_day: due_day || null
                     })
                     .select()
                     .single();
