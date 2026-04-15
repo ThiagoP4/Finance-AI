@@ -9,9 +9,9 @@
     import TransactionList from '../components/TransactionsList.vue';
     import CategoryGrid from '../components/CategoryGrid.vue';
     import { useTabsSwipe } from '../composables/useTabsSwipe';
+    import { useAlertStore } from '../stores/useAlertStore';
     import { useDateStore } from '../stores/useDateStore';
     import { storeToRefs } from 'pinia';
-    import { useAlertStore } from '../stores/useAlertStore';
 
     const { showAlert } = useAlertStore();
 
@@ -25,6 +25,8 @@
             description: string;
             color: string;
         } | null; 
+        categoryId?: number;
+        payment_id?: number;
     }
 
     const registries = ref<any[]>([]);
@@ -145,6 +147,7 @@
                         idCategory: cat.idCategory,
                         description: cat.description || '',
                         color: cat.color || '#cccccc',
+                        type: cat.type,
                         value: Array.isArray(listaCompras) 
                             ? listaCompras.reduce((acc: number, p: any) => acc + (p.value || 0), 0) 
                             : 0,
@@ -179,6 +182,12 @@
                 value, 
                 date, 
                 total_installments,
+                categoryId,
+                payment_id,
+                usr_payment(
+                    nickname,
+                    bank_name
+                ),
                 fin_category(
                     description, 
                     color
@@ -202,7 +211,10 @@
                     value: item.value,
                     date: item.dueDate,
                     paid: item.paid,
-                    fin_category: item.fin_purchase.fin_category
+                    fin_category: item.fin_purchase.fin_category,
+                    categoryId: item.fin_purchase.categoryId,
+                    payment_id: item.fin_purchase.payment_id,
+                    payment: item.fin_purchase.usr_payment
                 };
             });
            

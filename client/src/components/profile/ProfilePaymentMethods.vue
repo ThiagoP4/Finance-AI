@@ -17,6 +17,8 @@
     const newNickname = ref('')
     const newBankName = ref('')
     const newMethodType = ref('crédito')
+    const newClosingDay = ref<number | ''>('')
+    const newDueDay = ref<number | ''>('')
     
     const isConfirmingDelete = ref(false)
     const cardToDelete = ref<number | null>(null)
@@ -36,6 +38,8 @@
             newNickname.value = ''
             newBankName.value = ''
             newMethodType.value = 'crédito'
+            newClosingDay.value = ''
+            newDueDay.value = ''
             editingCardId.value = null
         }
     }
@@ -48,7 +52,9 @@
             const payload = {
                 nickname: newNickname.value,
                 bank_name: newBankName.value,
-                method_type: newMethodType.value
+                method_type: newMethodType.value,
+                closing_day: newClosingDay.value || null,
+                due_day: newDueDay.value || null
             }
 
             if (editingCardId.value) {
@@ -57,7 +63,9 @@
                 await profileStore.savePaymentMethod(
                     newNickname.value, 
                     newBankName.value, 
-                    newMethodType.value
+                    newMethodType.value,
+                    newClosingDay.value || undefined,
+                    newDueDay.value || undefined
                 );
             }
             
@@ -73,6 +81,8 @@
         newNickname.value = card.nickname;
         newBankName.value = card.bank_name;
         newMethodType.value = card.method_type;
+        newClosingDay.value = card.closing_day || '';
+        newDueDay.value = card.due_day || '';
         editingCardId.value = card.id_payment;
         showAddForm.value = true;
     }
@@ -122,6 +132,11 @@
                             <div class="card-text">
                                 <p class="card-name">{{ card.nickname }}</p>
                                 <p class="card-type">{{ card.bank_name }} - {{ card.method_type }}</p>
+                                <p class="card-invoice" v-if="card.method_type === 'crédito' && (card.closing_day || card.due_day)">
+                                    <span v-if="card.closing_day">Fecha dia {{ card.closing_day }}</span>
+                                    <span v-if="card.closing_day && card.due_day"> &bull; </span>
+                                    <span v-if="card.due_day">Vence dia {{ card.due_day }}</span>
+                                </p>
                             </div>
                         </div>
                         
@@ -144,7 +159,7 @@
             <form class="profile-card-content drawer-form view-layer" :class="{ 'view-hidden': !showAddForm }" @submit.prevent="saveCard">
                 <div class="form-grid">
                     <div class="profile-card-content-item">
-                        <label for="nickname">Apelido do Cartão/Conta</label>
+                        <label for="nickname">Apelido do Cartão</label>
                         <input type="text" id="nickname" v-model="newNickname" placeholder="Ex: NuBank Crédito" required>
                     </div>
                     <div class="profile-card-content-item">
@@ -173,6 +188,14 @@
                             <option value="pix">Pix</option>
                             <option value="outro">Outro</option>
                         </select>
+                    </div>
+                    <div class="profile-card-content-item" v-if="newMethodType === 'crédito'">
+                        <label for="closingDay">Dia do Fechamento</label>
+                        <input type="number" id="closingDay" v-model.number="newClosingDay" placeholder="Ex: 5" min="1" max="31">
+                    </div>
+                    <div class="profile-card-content-item" v-if="newMethodType === 'crédito'">
+                        <label for="dueDay">Dia do Vencimento</label>
+                        <input type="number" id="dueDay" v-model.number="newDueDay" placeholder="Ex: 15" min="1" max="31">
                     </div>
                 </div>
                 
@@ -249,6 +272,13 @@
         font-size: 0.85rem;
         margin: 0;
         text-transform: capitalize;
+    }
+
+    .card-invoice {
+        color: var(--primary-color);
+        font-size: 0.75rem;
+        margin: 0.15rem 0 0 0;
+        font-weight: 500;
     }
 
     .card-actions {

@@ -2,11 +2,14 @@
 
     import { ref, onMounted, computed, type PropType } from 'vue';
     import { supabase } from '../services/supabase';
-    import { PhPlus, PhWhatsappLogo } from '@phosphor-icons/vue';
+    import { PhPlus } from '@phosphor-icons/vue';
     import FormLayout from '../layouts/FormLayout.vue';
     import { useAlertStore } from '../stores/useAlertStore';
+    import { useProfileStore } from '../stores/useProfileStore';
+    import { POPULAR_BANKS } from '../utils/banks';
 
     const { showAlert } = useAlertStore();
+    const profileStore = useProfileStore();
 
     const props = defineProps({
         transactionData: {
@@ -23,8 +26,16 @@
     const value = ref('');
     const categoryId = ref('');
     const date = ref(new Date().toISOString().split('T')[0]); // Data de hoje
+    const paymentId = ref<number | string>('');
     const categories = ref<any[]>([]);
     const loading = ref(false);
+    
+    // Estados para Cadastro Rápido (Overlays)
+    const isAddingQuickCategory = ref(false);
+    const newQuickCategoryName = ref('');
+    const isAddingQuickPayment = ref(false);
+    const newQuickPaymentNickname = ref('');
+    const newQuickPaymentBank = ref('');
 
     const isInstallment = ref(false);
     const installmentNumber = ref('');
@@ -47,13 +58,86 @@
         } catch (error) {
             console.error('Erro ao carregar categorias:', error);
         }
+        if (profileStore.myCards.length === 0) {
+            await profileStore.fetchProfileData();
+        }
+
         if(props.transactionData) {
             description.value = props.transactionData.title;
             value.value = props.transactionData.value;
             categoryId.value = props.transactionData.categoryId;
+            paymentId.value = props.transactionData.payment_id || '';
             date.value = props.transactionData.date.split('T')[0]; // Formata para YYYY-MM-DD
         }
     });
+
+    const fetchCategories = async () => {
+        try {
+            const tipoCategoria = isIncome.value ? 'receita' : 'despesa';
+            const { data, error } = await supabase
+                .from('fin_category')
+                .select('*')
+                .eq('type', tipoCategoria);
+            if (error) throw error;
+            categories.value = data;
+        } catch (error) {
+            console.error('Erro ao carregar categorias:', error);
+        }
+    };
+
+    const handleQuickCategory = async () => {
+        if (!newQuickCategoryName.value) return;
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data, error } = await supabase
+                .from('fin_category')
+                .insert({
+                    description: newQuickCategoryName.value,
+                    type: isIncome.value ? 'receita' : 'despesa',
+                    color: '#7C3AED', // Cor padrão roxa
+                    user_id: user.id
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            
+            await fetchCategories();
+            categoryId.value = data.idCategory;
+            isAddingQuickCategory.value = false;
+            newQuickCategoryName.value = '';
+            showAlert('Categoria cadastrada!', 'success');
+        } catch (error) {
+            console.error('Erro ao cadastrar categoria rápida:', error);
+            showAlert('Erro ao cadastrar categoria.', 'error');
+        }
+    };
+
+    const handleQuickPayment = async () => {
+        if (!newQuickPaymentNickname.value || !newQuickPaymentBank.value) return;
+        try {
+            await profileStore.savePaymentMethod(
+                newQuickPaymentNickname.value,
+                newQuickPaymentBank.value,
+                'crédito'
+            );
+            
+            // O store já atualiza o myCards internamente no savePaymentMethod
+            // Procuramos o ID do card recém criado pelo nickname (simplificação)
+            const newCard = profileStore.myCards.find(c => c.nickname === newQuickPaymentNickname.value);
+            if (newCard) paymentId.value = newCard.id_payment;
+
+            isAddingQuickPayment.value = false;
+            newQuickPaymentNickname.value = '';
+            newQuickPaymentBank.value = '';
+            showAlert('Cartão cadastrado!', 'success');
+        } catch (error) {
+            console.error('Erro ao cadastrar pagamento rápido:', error);
+            showAlert('Erro ao cadastrar cartão.', 'error');
+        }
+    };
 
     const handleSubmit = async () => {
         if (!description.value || !value.value || !date.value) {
@@ -63,6 +147,11 @@
 
         if(!isIncome.value && !categoryId.value) {
             showAlert('Por favor, selecione uma Categoria.', 'warning');
+            return;
+        }
+
+        if(!isIncome.value && !paymentId.value) {
+            showAlert('Por favor, selecione a Forma de Pagamento.', 'warning');
             return;
         }
 
@@ -81,6 +170,7 @@
                 title: description.value,
                 value: parseFloat(value.value.toString()),
                 categoryId: categoryId.value || null,
+                payment_id: !isIncome.value ? (paymentId.value || null) : null,
                 date: date.value,
                 user_id: user.id,
                 ...(!isIncome.value ? { total_installments: isInstallment.value ? Number(installmentNumber.value) : 1 } : {})
@@ -176,13 +266,57 @@
 
             <div class="form-group">
                 <label>Categoria <span class="required" v-if="!isIncome">*</span></label>
-                <div class="select-wrapper">
-                    <select v-model="categoryId" class="input-field">
-                        <option value="" disabled selected>Selecione...</option>
-                        <option v-for="cat in categories" :key="cat.idCategory" :value="cat.idCategory">
-                            {{ cat.description }}
-                        </option>
-                    </select>
+                <div class="field-with-action">
+                    <div class="select-wrapper">
+                        <select v-model="categoryId" class="input-field">
+                            <option value="" disabled selected>Selecione...</option>
+                            <option v-for="cat in categories" :key="cat.idCategory" :value="cat.idCategory">
+                                {{ cat.description }}
+                            </option>
+                        </select>
+                    </div>
+                    <button type="button" class="quick-add-btn" @click="isAddingQuickCategory = !isAddingQuickCategory" title="Nova Categoria">
+                        <PhPlus size="16" />
+                    </button>
+                    
+                    <!-- Overlay Categoria -->
+                    <div v-if="isAddingQuickCategory" class="quick-add-overlay">
+                        <input type="text" v-model="newQuickCategoryName" placeholder="Nome da Categoria..." class="input-field-mini" @keyup.enter="handleQuickCategory">
+                        <div class="overlay-actions">
+                            <button type="button" @click="isAddingQuickCategory = false" class="btn-cancel">Cancelar</button>
+                            <button type="button" @click="handleQuickCategory" class="btn-save">Salvar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" v-if="!isIncome">
+                <label>Forma de Pagamento <span class="required">*</span></label>
+                <div class="field-with-action">
+                    <div class="select-wrapper">
+                        <select v-model="paymentId" class="input-field" :required="!isIncome">
+                            <option value="" disabled selected>Selecione o pagamento</option>
+                            <option v-for="card in profileStore.myCards" :key="card.id_payment" :value="card.id_payment">
+                                {{ card.bank_name }} - {{ card.nickname }}
+                            </option>
+                        </select>
+                    </div>
+                    <button type="button" class="quick-add-btn" @click="isAddingQuickPayment = !isAddingQuickPayment" title="Novo Cartão">
+                        <PhPlus size="16" />
+                    </button>
+
+                    <!-- Overlay Pagamento -->
+                    <div v-if="isAddingQuickPayment" class="quick-add-overlay">
+                        <input type="text" v-model="newQuickPaymentNickname" placeholder="Apelido (ex: NuBank)" class="input-field-mini">
+                        <select v-model="newQuickPaymentBank" class="input-field-mini">
+                            <option value="" disabled selected>Instituição...</option>
+                            <option v-for="bank in POPULAR_BANKS" :key="bank.id" :value="bank.name">{{ bank.name }}</option>
+                        </select>
+                        <div class="overlay-actions">
+                            <button type="button" @click="isAddingQuickPayment = false" class="btn-cancel">Cancelar</button>
+                            <button type="button" @click="handleQuickPayment" class="btn-save">Salvar</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -224,15 +358,6 @@
             <button type="submit" class="btn-primary">
                 <PhPlus size="20" weight="bold" />
                 {{ isEditing ? 'Salvar Alterações' : (isIncome ? 'Adicionar Entrada' : 'Adicionar Compra') }}
-            </button>
-
-            <div class="divider">
-                <span>ou</span>
-            </div>
-
-            <button type="button" class="btn-whatsapp">
-                <PhWhatsappLogo size="20" weight="bold" />
-                Cadastrar via WhatsApp
             </button>
 
         </form>
@@ -352,6 +477,99 @@
 
     .btn-primary {
         margin-top: 1.5rem;
+    }
+
+    /* Quick Add UI */
+    .field-with-action {
+        display: flex;
+        gap: 0;
+        align-items: stretch;
+        position: relative;
+    }
+
+    .field-with-action .select-wrapper {
+        flex: 1;
+    }
+
+    .field-with-action .select-wrapper .input-field {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-right: none;
+        height: 100%;
+    }
+
+    .quick-add-btn {
+        background: var(--bg-card);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        width: 42px;
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: 0.2s;
+        border-left: 1px solid var(--border-color);
+    }
+
+    .quick-add-btn:hover {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .quick-add-overlay {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px;
+        z-index: 100;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+        backdrop-filter: blur(8px);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .input-field-mini {
+        width: 100%;
+        padding: 0.6rem;
+        background: var(--bg-hover);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 0.85rem;
+    }
+
+    .overlay-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .btn-cancel {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        cursor: pointer;
+    }
+
+    .btn-save {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        cursor: pointer;
     }
 
     /* Botão WhatsApp */
