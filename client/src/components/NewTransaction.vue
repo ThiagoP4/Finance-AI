@@ -155,27 +155,37 @@
             return;
         }
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-        // Se por acaso o usuário não estiver logado, bloqueia a função
+        if (authError) {
+            throw authError;
+        }
+
         if (!user) {
-        console.error("Usuário não autenticado!");
-        return;
+            console.error('Usuário não autenticado!');
+            showAlert('Sessão inválida. Faça login novamente.', 'error');
+            return;
         }
 
         loading.value = true;
 
         try {
-            const payload = {
+            const basePayload: any = {
                 title: description.value,
                 value: parseFloat(value.value.toString()),
                 categoryId: categoryId.value || null,
-                payment_id: !isIncome.value ? (paymentId.value || null) : null,
                 date: date.value,
                 user_id: user.id,
-                ...(!isIncome.value ? { total_installments: isInstallment.value ? Number(installmentNumber.value) : 1 } : {})
             };
-            
+
+            const payload = isIncome.value
+                ? basePayload
+                : {
+                    ...basePayload,
+                    payment_id: paymentId.value || null,
+                    total_installments: isInstallment.value ? Number(installmentNumber.value) : 1,
+                };
+
             const table = isIncome.value ? 'fin_income' : 'fin_purchase';
             const primaryKey = isIncome.value ? 'idIncome' : 'idPurchase';
 
@@ -228,9 +238,10 @@
         
             emit('saved');
             emit('close');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao adicionar compra:', error);
-            showAlert('Ocorreu um erro ao adicionar a compra. Tente novamente.', 'error');
+            const message = error?.message || JSON.stringify(error);
+            showAlert(`Ocorreu um erro ao adicionar a compra. ${message}`, 'error');
         } finally {
             loading.value = false; // <--- DESTRAVA O BOTÃO
         }
