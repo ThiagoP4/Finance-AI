@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { AuthApiError } from '@supabase/supabase-js';
 import { supabase } from '../services/supabase';
 
 const INACTIVITY_TIMEOUT = 24 * 60 * 60 * 1000;
@@ -40,8 +41,13 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, _from, next) => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error } = await supabase.auth.getSession();
     const isAuthenticated = !!session;
+
+    if (error && error instanceof AuthApiError && error.message?.includes('Invalid refresh token')) {
+        await supabase.auth.signOut();
+        localStorage.removeItem('supabase.auth.token');
+    }
 
     if (isAuthenticated) {
         const lastActivity = localStorage.getItem('lastActivity');
