@@ -27,4 +27,6 @@ logs
 supabase/.temp/
 
 # Pastas antigas ou ignoradas
-exc/
+exc/
+
+obsidian/
