@@ -1,0 +1,54 @@
+# Dependências e Binários
+node_modules/
+client/node_modules/
+
+# Controle de Versão
+.git/
+
+# Artefatos de Build / Arquivos Gerados
+dist/
+build/
+client/dist/
+
+# Configurações de Editores
+.vscode/
+.idea/
+
+# Arquivos de Lock (não precisamos ler o conteúdo dos lockfiles para análise de código, e eles são muito grandes)
+package-lock.json
+client/package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Variáveis de Ambiente e Arquivos Sensíveis
+.env
+.env.*
+client/.env
+
+# Imagens e Mídia (Binários pesam no contexto e não podem ser lidos como texto)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.webp
+*.mp4
+*.pdf
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
+
+# Logs e arquivos de debug
+*.log
+npm-debug.log*
+logs/
+
+# Outras Pastas Específicas do Projeto (já ignoradas no .gitignore)
+exc/
+supabase/.temp/
+
+# Obsidian (Apenas configurações internas para não poluir, os .md ainda poderão ser lidos se houver necessidade)
+obsidian/.obsidian/
+obsidian/.trash/
