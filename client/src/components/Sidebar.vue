@@ -1,11 +1,12 @@
 <script setup lang="ts">
     import { ref } from 'vue';
     import { 
-        PhTrendUp, PhX, PhMoon, PhUser, PhHeart, 
+        PhX, PhMoon, PhUser, PhHeart, 
         PhArrowsClockwise, PhGear, PhQuestion, PhInfo, PhSignOut 
     } from '@phosphor-icons/vue';
     import { useRouter } from 'vue-router';
     import { supabase } from '../services/supabase';
+    import logoUrl from '../assets/somma-logo.svg';
 
     const props = defineProps<{ isOpen: boolean }>();
     const emit = defineEmits(['close']);
@@ -58,9 +59,7 @@
             <aside v-if="isOpen" class="sidebar">
                 <div class="sidebar-header">
                     <div class="brand">
-                        <div class="logo-icon">
-                            <PhTrendUp size="18" weight="fill" />
-                        </div>
+                        <img :src="logoUrl" alt="Somma Logo" class="logo-img" />
                         <span class="brand-text">Somma <strong>AI</strong></span>
                     </div>
                     <button class="close-btn" @click="emit('close')">
@@ -154,15 +153,10 @@
         align-items: center;
         gap: 10px;
     }
-    .logo-icon {
-        background: var(--primary-gradient);
-        width: 26px;
-        height: 26px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--text-inverse);
+    .logo-img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
     }
     .brand-text {
         font-size: 1rem;

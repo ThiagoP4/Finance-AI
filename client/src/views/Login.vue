@@ -4,6 +4,7 @@
     import { supabase } from '../services/supabase';
     import { PhEnvelope, PhLockKey, PhSignIn, PhUserPlus, PhUser, PhPhone } from '@phosphor-icons/vue';
     import { useAlertStore } from '../stores/useAlertStore';
+    import logoUrl from '../assets/somma-logo.svg';
 
     const { showAlert } = useAlertStore();
 
@@ -65,6 +66,7 @@
     <div class="login-container">
         <div class="login-card">
             <div class="header">
+                <img :src="logoUrl" alt="Somma Logo" class="login-logo" />
                 <h1>{{ isSignUp ? 'Crie sua conta' : 'Bem-vindo ao Somma AI' }}</h1>
                 <p>{{ isSignUp ? 'Preencha seus dados para começar' : 'Faça login para acessar seu painel' }}</p>
             </div>
@@ -192,8 +194,15 @@
         margin-bottom: 2rem;
     }
 
-    .header h1 { margin: 0; color: var(--text-primary); }
+    .header h1 { margin: 1rem 0 0.5rem; color: var(--text-primary); }
     .header p { margin-top: 0.5rem; color: var(--text-secondary); }
+
+    .login-logo {
+        width: 64px;
+        height: 64px;
+        object-fit: contain;
+        margin: 0 auto;
+    }
 
     .input-wrapper {
         position: relative;
