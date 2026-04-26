@@ -1,22 +1,25 @@
 <script setup lang="ts">
     import { ref, onMounted } from 'vue';
     import { RouterLink, useRoute } from 'vue-router'
-    import { PhHouse, PhFolders, PhSparkle, PhCalendarBlank, PhCaretDown, PhCaretLeft, PhCaretRight, PhList } from '@phosphor-icons/vue'
-    import { useDateStore } from '../stores/useDateStore';
+    import { PhHouse, PhFolders, PhSparkle, PhCalendarBlank, PhCaretDown, PhCaretLeft, PhCaretRight, PhCreditCard, PhList } from '@phosphor-icons/vue'
     import { storeToRefs } from 'pinia';
     import { onClickOutside } from '@vueuse/core';
     import Sidebar from '../components/Sidebar.vue';
     import logoUrl from '../assets/somma-logo.svg';
+    import { useFilterStore } from '../stores/useFilterStore';
+    import { useProfileStore } from '../stores/useProfileStore';
 
 
     const isDark = ref(false);
     const route = useRoute();
-    const dateStore = useDateStore();
     const isSidebarOpen = ref(false);
 
-    const { selectedMonth, selectedYear } = storeToRefs(dateStore);
+    const filterStore = useFilterStore();
+    const profileStore = useProfileStore();
 
-    const { selectMonth, nextYear, previousYear, monthNames } = dateStore;
+    const { selectedMonth, selectedYear, filterMode, selectedCardIds } = storeToRefs(filterStore);
+
+    const { selectMonth, nextYear, previousYear, monthNames, toggleCardSelection } = filterStore;
     const isDateDropdownOpen = ref(false);
     const dateDropdownRef = ref<HTMLElement | null>(null);
 
@@ -29,12 +32,19 @@
         isDateDropdownOpen.value = false;
     }
 
-    onMounted(() => {
+    onMounted(async () => {
         // Verifica o tema salvo no localStorage
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme) {
             isDark.value = true;
             document.body.classList.add('dark')
+        }
+        await profileStore.fetchProfileData(); 
+        
+        // Se entrar no modo fatura e não tiver nada selecionado, selecionamos o primeiro por padrão
+        // para não começar "vazio" a menos que o usuário desmarque.
+        if (filterMode.value === 'invoice' && selectedCardIds.value.length === 0 && profileStore.myCards.length > 0) {
+            selectedCardIds.value = [profileStore.myCards[0].id_payment];
         }
     });
 </script>
@@ -77,29 +87,73 @@
       <div class="right-actions">
 
         <div class="date-selector-container" ref="dateDropdownRef">
-          <button class="date-btn" @click="isDateDropdownOpen = !isDateDropdownOpen">
-            <PhCalendarBlank size="18" />
-            <span>{{ monthNames[selectedMonth] }} {{ selectedYear }}</span>
+          <button class="date-btn" :class="{ 'mode-invoice-active': filterMode === 'invoice' }" @click="isDateDropdownOpen = !isDateDropdownOpen">
+            <PhCalendarBlank size="18" v-if="filterMode === 'month'" />
+            <PhCreditCard size="18" v-else />
+            <span>{{ filterMode === 'month' ? monthNames[selectedMonth] + ' ' + selectedYear : 'Fatura de ' + monthNames[selectedMonth] }}</span>
             <PhCaretDown size="16" />
           </button>
+
           <div class="date-dropdown" v-if="isDateDropdownOpen">
-            <div class="year-selector">
+            <div class="filter-tabs">
+              <button
+                class="tab-btn"
+                :class="{ active: filterMode === 'month' }"
+                @click="filterStore.setFilterMode('month')"
+              >
+              <PhCalendarBlank size="18" /> Por mês
+              </button>
+              <button
+                class="tab-btn invoice-tab"
+                :class="{ active: filterMode === 'invoice' }"
+                @click="filterStore.setFilterMode('invoice')"
+              >
+                <PhCreditCard size="18" /> Por Fatura
+              </button>
+            </div>
+
+            <div v-if="filterMode === 'month'">
+              <div class="year-selector">
               <button @click="previousYear()"><PhCaretLeft size="18" weight="bold" /></button>
                     <span>{{ selectedYear }}</span>
                     <button @click="nextYear()"><PhCaretRight size="18" weight="bold" /></button>
+              </div>
+              <div class="months-grid">
+                <button 
+                  v-for="(month, index) in monthNames" 
+                  :key="month" 
+                  @click="handleMonthSelection(index)"
+                  :class="['month-btn', { active: selectedMonth === index }]"
+                >
+                  {{ month }}
+                </button>
+              </div>
             </div>
-            <div class="months-grid">
-              <button 
-                v-for="(month, index) in monthNames" 
-                :key="month" 
-                @click="handleMonthSelection(index)"
-                :class="['month-btn', { active: selectedMonth === index }]"
-              >
-                {{ month }}
-              </button>
+            <div v-else class="invoice-selector">
+              <p class="selector-title">Cartões selecionados:</p>
+              <div class="cards-chips-grid">
+                <div 
+                  v-for="card in profileStore.myCards" 
+                  :key="card.id_payment"
+                  class="card-chip-item"
+                  :class="{ selected: selectedCardIds.includes(card.id_payment) }"
+                  @click="toggleCardSelection(card.id_payment)"
+                >
+                  <div class="chip-icon">
+                    <PhCreditCard weight="fill" />
+                  </div>
+                  <div class="chip-details">
+                    <span class="chip-name">{{ card.nickname }}</span>
+                    <span class="chip-bank">{{ card.bank_name }}</span>
+                  </div>
+                  <div class="chip-check" v-if="selectedCardIds.includes(card.id_payment)">
+                    <PhSparkle weight="fill" size="12" />
+                  </div>
+                </div>
+              </div>
+              <p v-if="profileStore.myCards.length === 0" class="no-cards-msg">Nenhum cartão cadastrado.</p>
             </div>
           </div>
-
         </div>
       </div>
     </nav>
@@ -261,12 +315,7 @@
       font-family: 'Inter', sans-serif;
       transition: all 0.2s;
     }
-
-    .date-btn:hover {
-      background-color: var(--bg-page);
-      border-color: var(--text-secondary);
-    }
-
+    
     .date-dropdown {
       position: absolute;
       top: calc(100% + 0.5rem);
@@ -277,7 +326,7 @@
       padding: 1rem;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
       z-index: 200;
-      width: 250px;
+      width: 280px;
       animation: fadeIn 0.15s ease-out;
     }
 
@@ -325,6 +374,142 @@
       font-weight: 600;
       transition: all 0.2s;
       font-family: 'Inter', sans-serif;
+    }
+
+    .filter-tabs {
+      display: flex;
+      background-color: var(--bg-page);
+      padding: 4px;
+      border-radius: 10px;
+      margin-bottom: 0.8rem;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.4rem;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s;
+      justify-content: center;
+    }
+
+    .tab-btn.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .tab-btn.invoice-tab.active {
+        background-color: var(--primary-color);
+    }
+  
+    .invoice-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .selector-title {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.2rem;
+    }
+
+    .cards-chips-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+      max-height: 250px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .card-chip-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border-color);
+      background-color: var(--bg-page);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .card-chip-item:hover {
+      border-color: var(--text-secondary);
+      transform: translateX(4px);
+    }
+
+    .card-chip-item.selected {
+      border-color: var(--accent-color);
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(14, 165, 233, 0.02) 100%);
+    }
+
+    .chip-icon {
+      width: 32px;
+      height: 32px;
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      transition: all 0.2s;
+    }
+
+    .card-chip-item.selected .chip-icon {
+      background-color: var(--accent-color);
+      color: white;
+      border-color: var(--accent-color);
+      box-shadow: 0 4px 10px rgba(14, 165, 233, 0.3);
+    }
+
+    .chip-details {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .chip-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .chip-bank {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+    }
+
+    .chip-check {
+      color: var(--accent-color);
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0); }
+      100% { transform: scale(1); }
+    }
+
+    .no-cards-msg {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        text-align: center;
+        padding: 1rem;
     }
 
     .month-btn:hover {
@@ -398,8 +583,8 @@
       }
 
       .nav-links a.btn-ia {
-          border: 1px solid var(--accent-color) !important;
-          color: var(--accent-color);
+          border: 1px solid var(--primary-color) !important;
+          color: var(--primary-color);
       }
 
       .nav-links a svg {
