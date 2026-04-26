@@ -1,10 +1,15 @@
-name: Build Android APK
+name: Build and Release Android APK
 
 on:
   push:
-    branches: [ "main", "refactor/trabalho" ] # Roda quando você der push nessas branches
+    branches: [ "main", "refactor/trabalho" ]
+    tags:
+      - 'v*' # Roda quando você criar uma tag tipo v1.0, v2.1, etc.
   pull_request:
     branches: [ "main" ]
+
+permissions:
+  contents: write # OBRIGATÓRIO para criar releases
 
 jobs:
   build:
@@ -50,6 +55,19 @@ jobs:
           cd client/android
           ./gradlew assembleDebug
 
+      # Este passo cria a Release oficial no GitHub
+      - name: Criar Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: client/android/app/build/outputs/apk/debug/app-debug.apk
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Mantive o upload de artefato para você poder testar sem precisar de tag
       - name: Upload do APK como Artefato
         uses: actions/upload-artifact@v4
         with:
