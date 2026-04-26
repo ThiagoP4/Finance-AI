@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Somma AI</string>
+    <string name="title_activity_main">Somma AI</string>
+    <string name="package_name">com.somma.ai</string>
+    <string name="custom_url_scheme">com.somma.ai</string>
+</resources>

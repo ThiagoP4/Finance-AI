@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
     "@phosphor-icons/vue": "^2.2.1",
     "@supabase/supabase-js": "^2.95.3",
     "@vueuse/core": "^14.2.1",
