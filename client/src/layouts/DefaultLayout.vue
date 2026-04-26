@@ -1,11 +1,12 @@
 <script setup lang="ts">
     import { ref, onMounted } from 'vue';
     import { RouterLink, useRoute } from 'vue-router'
-    import { PhTrendUp, PhHouse, PhFolders, PhSparkle, PhCalendarBlank, PhCaretDown, PhCaretLeft, PhCaretRight, PhList } from '@phosphor-icons/vue'
+    import { PhHouse, PhFolders, PhSparkle, PhCalendarBlank, PhCaretDown, PhCaretLeft, PhCaretRight, PhList } from '@phosphor-icons/vue'
     import { useDateStore } from '../stores/useDateStore';
     import { storeToRefs } from 'pinia';
     import { onClickOutside } from '@vueuse/core';
     import Sidebar from '../components/Sidebar.vue';
+    import logoUrl from '../assets/somma-logo.svg';
 
 
     const isDark = ref(false);
@@ -46,12 +47,10 @@
           <PhList size="26" />
         </button>
         <div class="logo">
-          <div class="logo-icon">
-            <PhTrendUp size="18" weight="bold" />
-          </div>
+          <img :src="logoUrl" alt="Somma Logo" class="logo-img" />
           <span class="brand-text">
-             <strong style="color: var(--accent-color)">Somma</strong>
-             <strong style="color: var(--primary-color)"> AI</strong>
+             <strong style="color: var(--text-primary)">Somma</strong>
+             <strong class="gradient-text">AI</strong>
           </span>
         </div>
       </div>
@@ -124,7 +123,7 @@
     .navbar {
       background-color: var(--bg-card);
       height: 70px;
-      padding: 0 2rem;
+      padding: 0 1rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -167,19 +166,24 @@
         letter-spacing: -0.5px;
     }
     
-    .logo-icon {
-      background: var(--primary-gradient);
-      width: 28px;
-      height: 28px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-inverse);
+    .logo-img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
     }
 
     .brand-text {
       font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem; /* Cria o espaço entre Somma e AI */
+    }
+
+    .gradient-text {
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .nav-links {
@@ -367,29 +371,42 @@
 
       .logo-icon { width: 40px; height: 40px; border-radius: 10px; }
       
-      /* 3. Ajustar os links do meio (Dashboard, etc) */
+      /* Restaurar links do meio no celular - vamos ajustar o tamanho deles */
       .nav-links {
-          justify-self: center;
-          gap: 0.5rem;
+          display: flex;
+          gap: 0.8rem;
       }
 
       .nav-links a {
+          width: 32px !important;
+          height: 32px !important;
+          min-width: 32px !important;
+          padding: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          border-radius: 8px !important;
+          background: transparent !important;
+          color: var(--text-secondary);
           font-size: 0;
-          padding: 0.6rem; /* Padding igual em todos os lados = botão quadrado */
-          justify-content: center; /* Centraliza o ícone horizontalmente */
-          align-items: center;     /* Centraliza o ícone verticalmente */
-          gap: 0; /* Remove gap do nó de texto invisível que deslocava o ícone */
+          gap: 0 !important; /* Remove o espaço do texto invisível */
       }
 
-      /* O btn-ia tem borda, então compensamos 1.5px pra não mudar o tamanho visual */
-      .nav-links a.btn-ia {
-          padding: calc(0.6rem - 1.5px);
+      .nav-links a.active {
+          background: var(--primary-gradient) !important;
+          color: white !important;
       }
-      
+
+      .nav-links a.btn-ia {
+          border: 1px solid var(--accent-color) !important;
+          color: var(--accent-color);
+      }
+
       .nav-links a svg {
-          display: block; /* Garante que o SVG não herde font-size: 0 */
-          width: 22px;
-          height: 22px;
+          width: 20px;
+          height: 20px;
+          display: block;
+          margin: 0 auto; /* Garante centralização horizontal absoluta */
       }
 
       /* 4. Ajustar botão de Sair */
@@ -414,6 +431,10 @@
           right: 0;
           left: auto;
           width: 240px;
+      }
+      .logo {
+          position: static;
+          transform: none;
       }
     }
 </style>

@@ -11,7 +11,8 @@
     PhTrendUp,
     PhChartLine,
     PhTrendDown,
-    PhArrowRight
+    PhArrowRight,
+    PhWhatsappLogo
   } from '@phosphor-icons/vue'
 
   import VueApexCharts from 'vue3-apexcharts'
@@ -234,6 +235,16 @@
       </div>
     </section>
 
+    <!-- Botão de WhatsApp Flutuante (Exclusivo da Home) -->
+    <a 
+      href="https://wa.me/5527997816701" 
+      target="_blank" 
+      class="whatsapp-float"
+      title="Fale com nosso Bot"
+    >
+      <PhWhatsappLogo :size="28" weight="fill" />
+    </a>
+
   </main>
 </template>
 
@@ -363,10 +374,43 @@
     border-radius: 8px;
   }
 
- @media (max-width: 640px) {
-  .page-header {
-    display: flex;
-    flex-direction: column;
+  @media (max-width: 640px) {
+    .page-header {
+      display: flex;
+      flex-direction: column;
+    }
   }
- }
+
+  /* Estilo do Botão de WhatsApp Minimalista */
+  .whatsapp-float {
+      position: fixed;
+      width: 50px;
+      height: 50px;
+      bottom: 25px;
+      right: 25px;
+      background-color: #25d366;
+      color: #FFF;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      z-index: 1000;
+      text-decoration: none;
+      transition: transform 0.2s ease;
+  }
+
+  .whatsapp-float:hover {
+      transform: translateY(-3px);
+      background-color: #1ed760;
+  }
+
+  @media (max-width: 768px) {
+      .whatsapp-float {
+          width: 45px;
+          height: 45px;
+          bottom: 20px;
+          right: 20px;
+      }
+  }
 </style>

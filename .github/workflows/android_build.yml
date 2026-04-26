@@ -1,0 +1,57 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "refactor/trabalho" ] # Roda quando você der push nessas branches
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Instalar Dependências (Web)
+        run: |
+          cd client
+          npm install
+
+      - name: Build do Projeto Vue
+        run: |
+          cd client
+          npm run build
+
+      - name: Configurar Java (Necessário para Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Sincronizar Capacitor
+        run: |
+          cd client
+          npx cap sync android
+
+      - name: Dar permissão de execução ao Gradle
+        run: chmod +x client/android/gradlew
+
+      - name: Build do APK (Debug)
+        run: |
+          cd client/android
+          ./gradlew assembleDebug
+
+      - name: Upload do APK como Artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: client/android/app/build/outputs/apk/debug/app-debug.apk
