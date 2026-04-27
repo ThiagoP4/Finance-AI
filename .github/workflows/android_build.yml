@@ -72,7 +72,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           cd client
-          npx @capgo/cli@latest bundle upload --apikey "${{ secrets.CAPGO_TOKEN }}" --app-id com.somma.ai --channel production --external
+          npx @capgo/cli@latest bundle upload --apikey "${{ secrets.CAPGO_TOKEN }}" --app-id com.somma.ai --channel production
 
       # Mantive o upload de artefato para você poder testar sem precisar de tag
       - name: Upload do APK como Artefato
