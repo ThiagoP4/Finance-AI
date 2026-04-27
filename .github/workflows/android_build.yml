@@ -65,7 +65,14 @@ jobs:
           draft: false
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      # Este passo envia o código Vue direto para os celulares (Live Update)
+      - name: Deploy Live Update (Capgo)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd client
+          npx @capgo/cli@latest bundle upload --apikey "${{ secrets.CAPGO_TOKEN }}" --app-id com.somma.ai --channel production --external
 
       # Mantive o upload de artefato para você poder testar sem precisar de tag
       - name: Upload do APK como Artefato
