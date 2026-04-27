@@ -1,5 +1,12 @@
 {
   "appId": "com.somma.ai",
   "appName": "Somma AI",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": true,
+      "stats": true,
+      "resetWhenUpdateFailed": true
+    }
+  }
 }

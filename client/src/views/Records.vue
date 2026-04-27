@@ -1,7 +1,7 @@
 <script setup lang="ts">
     import { ref, onMounted, computed, watch } from 'vue';
     import { supabase } from '../services/supabase';
-    import { PhFunnel, PhMicrosoftExcelLogo } from '@phosphor-icons/vue';
+    import { PhFunnel, PhMicrosoftExcelLogo, PhCreditCard } from '@phosphor-icons/vue';
     import ListLayout from '../layouts/ListLayout.vue';
     import NewTransaction from '../components/NewTransaction.vue';
     import NewCategory from '../components/NewCategory.vue';
@@ -10,7 +10,7 @@
     import CategoryGrid from '../components/CategoryGrid.vue';
     import { useTabsSwipe } from '../composables/useTabsSwipe';
     import { useAlertStore } from '../stores/useAlertStore';
-    import { useDateStore } from '../stores/useDateStore';
+    import { useFilterStore } from '../stores/useFilterStore';
     import { storeToRefs } from 'pinia';
 
     const { showAlert } = useAlertStore();
@@ -31,12 +31,39 @@
 
     const registries = ref<any[]>([]);
     const loading = ref(true);
+    const cardsInfo = ref<any[]>([]);
+
+    const fetchCardsInfo = async () => {
+        const { data } = await supabase.from('usr_payment').select('idPayment, nickname, closing_day');
+        cardsInfo.value = data || [];
+    };
+
+    const monthNames = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+
+    const invoicePeriodText = computed(() => {
+        if (filterMode.value !== 'invoice' || selectedCardIds.value.length === 0) return '';
+        
+        const selectedCards = cardsInfo.value.filter(c => selectedCardIds.value.includes(c.idPayment));
+        if (selectedCards.length === 1) {
+            const card = selectedCards[0];
+            const day = card.closing_day || 1;
+            const endDate = new Date(selectedYear.value, selectedMonth.value, day);
+            const startDate = new Date(selectedYear.value, selectedMonth.value - 1, day + 1);
+            
+            return `Exibindo fatura de ${monthNames[selectedMonth.value]}: ${startDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${endDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+        }
+        
+        return `Exibindo faturas de ${monthNames[selectedMonth.value]}`;
+    });
     const showFilter = ref(false);
     const isModalOpen = ref(false);
     const isCategoryModalOpen = ref(false);
     const registryToEdit = ref<Registry | null>(null);
-    const dateStore = useDateStore();
-    const { selectedMonth, selectedYear } = storeToRefs(dateStore);
+    const filterStore = useFilterStore();
+    const { selectedMonth, selectedYear, filterMode, selectedCardIds } = storeToRefs(filterStore);
     
     const search = ref('');
     const searchCategory = ref('');
@@ -63,9 +90,9 @@
     const { tabs, currentTab: currentTab, moveTab: moveTab } = useTabsSwipe(['compras', 'entradas', 'categorias'], touchArea);
     
     
-    watch([currentTab, selectedMonth, selectedYear], () => {
+    watch([currentTab, selectedMonth, selectedYear, filterMode, selectedCardIds], () => {
         fetchRegistries();
-    });
+    }, { deep: true });
 
     const totalValue = computed(() => {
         if (currentTab.value === 'categorias') return 0;
@@ -130,101 +157,122 @@
     const fetchRegistries = async () => {
         loading.value = true;
         try {
+            if (cardsInfo.value.length === 0) await fetchCardsInfo();
+            // Datas base para o modo Mensal (calendário)
             const startDate = new Date(selectedYear.value, selectedMonth.value, 1).toISOString().split('T')[0];
             const endDate = new Date(selectedYear.value, selectedMonth.value + 1, 0).toISOString().split('T')[0];
+
+            // 1. ABA CATEGORIAS
             if (currentTab.value === 'categorias') {
                 const { data, error } = await supabase
                     .from('fin_category')
-                    .select('*, fin_purchase(value)') // Faz join para somar valores por categoria
+                    .select('*, fin_purchase(value)')
                     .gte('fin_purchase.date', startDate)
                     .lte('fin_purchase.date', endDate);
-                    if (error) throw error;
-                // Transforma os dados para o formato esperado pela tabela
-                    registries.value = (data || []).map((cat: any) => {
-                     const listaCompras = cat.fin_purchase || []; 
-            
-                    return {
-                        idCategory: cat.idCategory,
-                        description: cat.description || '',
-                        color: cat.color || '#cccccc',
-                        type: cat.type,
-                        value: Array.isArray(listaCompras) 
-                            ? listaCompras.reduce((acc: number, p: any) => acc + (p.value || 0), 0) 
-                            : 0,
-                    };
-                });
-                return; // Para a execução aqui se for categoria
+                
+                if (error) throw error;
+                registries.value = (data || []).map((cat: any) => ({
+                    idCategory: cat.idCategory,
+                    description: cat.description || '',
+                    color: cat.color || '#cccccc',
+                    type: cat.type,
+                    value: (cat.fin_purchase || []).reduce((acc: number, p: any) => acc + (p.value || 0), 0),
+                }));
+                return;
             }
 
+            // 2. ABA ENTRADAS
             if (currentTab.value === 'entradas') {
                 const { data, error } = await supabase
-                .from('fin_income')
-                .select('*, fin_category(description, color)')
-                .order('date', { ascending: false })
-                .gte('date', startDate)
-                .lte('date', endDate);
+                    .from('fin_income')
+                    .select('*, fin_category(description, color)')
+                    .order('date', { ascending: false })
+                    .gte('date', startDate)
+                    .lte('date', endDate);
+                
                 if (error) throw error;
                 registries.value = data || [];
                 return;
             }
 
-            const { data, error } = await supabase
-            .from('fin_installment')
-            .select(`
-            idInstallment,
-            installmentNumber,
-            value,
-            dueDate,
-            paid,
-            purchaseId,
-            fin_purchase!inner(
-                title, 
-                value, 
-                date, 
-                total_installments,
-                categoryId,
-                payment_id,
-                usr_payment(
-                    nickname,
-                    bank_name
-                ),
-                fin_category(
-                    description, 
-                    color
-                )
-            )
-            `)
-            .order('dueDate', { ascending: false })
-            .gte('dueDate', startDate)
-            .lte('dueDate', endDate)
-           
-            if(error) throw error;
-            registries.value = (data || []).map((item: any) => {
-                const sufixo = item.fin_purchase.total_installments > 1
-                    ? `(${item.installmentNumber}/${item.fin_purchase.total_installments}x)`
-                    : '';
+            // 3. ABA COMPRAS (Onde entra a lógica de Fatura)
+            if (currentTab.value === 'compras') {
+                if (filterMode.value === 'invoice' && selectedCardIds.value.length === 0) {
+                    registries.value = [];
+                    loading.value = false;
+                    return;
+                }
 
-                return {
-                    idPurchase: item.purchaseId,
-                    idInstallment: item.idInstallment,
-                    title: `${item.fin_purchase.title} ${sufixo}`.trim(),
-                    value: item.value,
-                    date: item.dueDate,
-                    paid: item.paid,
-                    fin_category: item.fin_purchase.fin_category,
-                    categoryId: item.fin_purchase.categoryId,
-                    payment_id: item.fin_purchase.payment_id,
-                    payment: item.fin_purchase.usr_payment
-                };
-            });
-           
+                let query = supabase.from('fin_installment').select(`
+                    idInstallment,
+                    installmentNumber,
+                    value,
+                    dueDate,
+                    paid,
+                    purchaseId,
+                    fin_purchase!inner(
+                        title, 
+                        value, 
+                        date, 
+                        total_installments,
+                        categoryId,
+                        payment_id,
+                        usr_payment(nickname, bank_name, closing_day),
+                        fin_category(description, color)
+                    )
+                `);
 
-            console.log('Dados recebidos Compras:', data, 'Start:', startDate, 'End:', endDate);
-        } catch (error) { 
+                if (filterMode.value === 'invoice') {
+                    // Modo Fatura: Filtra pelos cartões e usa um range seguro de datas
+                    query = query.in('fin_purchase.payment_id', selectedCardIds.value);
+                    const safeStart = new Date(selectedYear.value, selectedMonth.value - 1, 1).toISOString().split('T')[0];
+                    const safeEnd = new Date(selectedYear.value, selectedMonth.value + 1, 15).toISOString().split('T')[0];
+                    query = query.gte('dueDate', safeStart).lte('dueDate', safeEnd);
+                } else {
+                    // Modo Mensal: Filtra pelo mês calendário
+                    query = query.gte('dueDate', startDate).lte('dueDate', endDate);
+                }
+
+                const { data, error } = await query.order('dueDate', { ascending: false });
+                if (error) throw error;
+                // 4. MAPEAMENTO E FILTRO FINO
+                let result = (data || []).map((item: any) => {
+                    const sufixo = item.fin_purchase.total_installments > 1
+                        ? `(${item.installmentNumber}/${item.fin_purchase.total_installments}x)`
+                        : '';
+
+                    return {
+                        idPurchase: item.purchaseId,
+                        idInstallment: item.idInstallment,
+                        title: `${item.fin_purchase.title} ${sufixo}`.trim(),
+                        value: item.value,
+                        date: item.dueDate,
+                        paid: item.paid,
+                        fin_category: item.fin_purchase.fin_category,
+                        categoryId: item.fin_purchase.categoryId,
+                        payment_id: item.fin_purchase.payment_id,
+                        payment: item.fin_purchase.usr_payment
+                    };
+                });
+
+                if (filterMode.value === 'invoice') {
+                    registries.value = result.filter(item => {
+                        const closingDay = item.payment?.closing_day || 1;
+                        const closingDate = new Date(selectedYear.value, selectedMonth.value, closingDay);
+                        const startDateCycle = new Date(selectedYear.value, selectedMonth.value - 1, closingDay + 1);
+                        const itemDate = new Date(item.date);
+                        return itemDate >= startDateCycle && itemDate <= closingDate;
+                    });
+                } else {
+                    registries.value = result;
+                }
+            }
+        } catch (error) {
             console.error(error);
             showAlert('Erro ao carregar registros', 'error');
-         }
-        finally { loading.value = false; }
+        } finally {
+            loading.value = false;
+        }
     };
 
     const deleteRegistry = async (id: number) => {
@@ -270,6 +318,12 @@
             :totalValue="currentTab === 'categorias' ? 0 : totalValue"
             @addNew="openNewModal"
         >
+            <template #header v-if="invoicePeriodText">
+                <div class="invoice-period-badge">
+                    <PhCreditCard :size="18" weight="fill" />
+                    <span>{{ invoicePeriodText }}</span>
+                </div>
+            </template>
 
         <template #actions>
             <button 
@@ -345,6 +399,18 @@
 </template>
 
 <style scoped>
-
-
+    .invoice-period-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(30, 64, 175, 0.1);
+        color: #3B82F6;
+        padding: 0.4rem 1rem;
+        border-radius: 99px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        margin-bottom: 1rem;
+        margin-left: 0.5rem;
+    }
 </style>

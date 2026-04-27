@@ -28,5 +28,27 @@ supabase/.temp/
 
 # Pastas antigas ou ignoradas
 exc/
-
 obsidian/
+
+# --- Capacitor & Android ---
+# Ignorar arquivos compilados do Android
+client/android/app/build/
+client/android/.gradle/
+client/android/local.properties
+client/android/app/release/
+client/android/app/debug/
+client/android/captures/
+
+# Nunca subir o APK final para o Git
+*.apk
+*.aar
+*.jks
+*.keystore
+
+# Arquivos de configuração do Android Studio
+.navigation/
+captures/
+*.iml
+.externalNativeBuild
+.cxx
+local.properties

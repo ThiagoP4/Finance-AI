@@ -1,8 +1,8 @@
 <script setup lang="ts">
 
-  import { ref, onMounted, watch } from 'vue';
+  import { ref, onMounted, watch, computed } from 'vue';
   import { supabase } from '../services/supabase';
-  import { useDateStore } from '../stores/useDateStore';
+  import { useFilterStore } from '../stores/useFilterStore';
   import { storeToRefs } from 'pinia';
 
   import {
@@ -12,14 +12,15 @@
     PhChartLine,
     PhTrendDown,
     PhArrowRight,
-    PhWhatsappLogo
+    PhWhatsappLogo,
+    PhCreditCard
   } from '@phosphor-icons/vue'
 
   import VueApexCharts from 'vue3-apexcharts'
   import type { ApexOptions } from 'apexcharts'
 
-  const dateStore = useDateStore();
-  const { selectedMonth, selectedYear } = storeToRefs(dateStore);
+  const filterStore = useFilterStore();
+  const { selectedMonth, selectedYear, filterMode, selectedCardIds } = storeToRefs(filterStore);
 
   const dashboardData = ref({
     total: 0,
@@ -42,8 +43,34 @@
     }
   });
 
-  // --- CONFIGURAÇÃO DO GRÁFICO DE PIZZA (DONUT) ---
   const pieSeries = ref<number[]>([]);
+  const cardsInfo = ref<any[]>([]);
+
+  const fetchCardsInfo = async () => {
+    const { data } = await supabase.from('usr_payment').select('idPayment, nickname, closing_day');
+    cardsInfo.value = data || [];
+  };
+
+  const monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+    const invoicePeriodText = computed(() => {
+    if (filterMode.value !== 'invoice' || selectedCardIds.value.length === 0) return '';
+    
+    const selectedCards = cardsInfo.value.filter(c => selectedCardIds.value.includes(c.idPayment));
+    if (selectedCards.length === 1) {
+      const card = selectedCards[0];
+      const day = card.closing_day || 1;
+      const endDate = new Date(selectedYear.value, selectedMonth.value, day);
+      const startDate = new Date(selectedYear.value, selectedMonth.value - 1, day + 1);
+      
+      return `Exibindo fatura de ${monthNames[selectedMonth.value]}: ${startDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${endDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+    }
+    
+    return `Exibindo faturas de ${monthNames[selectedMonth.value]}`;
+  });
 
 
   const pieOptions = ref<ApexOptions>({
@@ -78,10 +105,31 @@
 
   const fetchData = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_dashboard_data', {
+      if (cardsInfo.value.length === 0) await fetchCardsInfo();
+      const params: any = {
         p_month: selectedMonth.value + 1,
         p_year: selectedYear.value
-      });
+      };
+
+      if (filterMode.value === 'invoice') {
+        if (selectedCardIds.value.length > 0) {
+          params.p_card_ids = selectedCardIds.value;
+        } else {
+          // Se for modo fatura mas sem cartão selecionado, zeramos o dashboard
+          dashboardData.value = {
+            total: 0,
+            count: 0,
+            ticketMedio: 0,
+            trend: { status: 'stable', text: 'Selecione um cartão', current: 0, last: 0 },
+            pieChart: { series: [], labels: [], colors: [] },
+            lineChart: { series: [], categories: [] }
+          };
+          pieSeries.value = [];
+          return;
+        }
+      }
+
+      const { data, error } = await supabase.rpc('get_dashboard_data', params);
 
       if (error) throw error;
       
@@ -144,9 +192,9 @@
     }
   };
 
-  watch([selectedMonth, selectedYear], () => {
+  watch([selectedMonth, selectedYear, filterMode, selectedCardIds], () => {
     fetchData();
-  });
+  }, { deep: true });
 
   onMounted(() => {
     fetchData();
@@ -159,7 +207,11 @@
 
     <header class="page-header">
       <h1>Dashboard Financeiro</h1>
-      <p>Análise completa dos seus gastos e tendências de consumo</p>
+      <p v-if="!invoicePeriodText">Análise completa dos seus gastos e tendências de consumo</p>
+      <div v-else class="invoice-period-badge">
+        <PhCreditCard :size="18" weight="fill" />
+        <span>{{ invoicePeriodText }}</span>
+      </div>
     </header>
 
     <section class="stats-overview">
@@ -255,6 +307,20 @@
       font-size: 1.5rem;
       margin: 0 0 0.5rem 0;
   } 
+
+  .invoice-period-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(30, 64, 175, 0.1);
+    color: #3B82F6;
+    padding: 0.4rem 1rem;
+    border-radius: 99px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    margin-top: 0.25rem;
+  }
 
   .stats-overview {
     display: grid;
