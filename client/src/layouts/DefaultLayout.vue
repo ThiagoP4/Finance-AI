@@ -1,7 +1,7 @@
 <script setup lang="ts">
     import { ref, onMounted } from 'vue';
     import { RouterLink, useRoute } from 'vue-router'
-    import { PhHouse, PhFolders, PhSparkle, PhCalendarBlank, PhCaretDown, PhCaretLeft, PhCaretRight, PhCreditCard, PhList } from '@phosphor-icons/vue'
+    import { PhFolders, PhSparkle, PhTrendUp, PhCalendarBlank, PhCaretDown, PhCaretLeft, PhCaretRight, PhCreditCard, PhList } from '@phosphor-icons/vue'
     import { storeToRefs } from 'pinia';
     import { onClickOutside } from '@vueuse/core';
     import Sidebar from '../components/Sidebar.vue';
@@ -56,26 +56,26 @@
         <button class="hamburger-btn" @click="isSidebarOpen = true">
           <PhList size="26" />
         </button>
-        <div class="logo">
+        <RouterLink to="/" class="logo">
           <img :src="logoUrl" alt="Somma Logo" class="logo-img" />
           <span class="brand-text">
              <strong style="color: var(--text-primary)">Somma</strong>
              <strong class="gradient-text">AI</strong>
           </span>
-        </div>
+        </RouterLink>
       </div>
 
 
     <ul class="nav-links">
         <li>
-            <RouterLink to="/" active-class="active">
-                <PhHouse size="20" /> Dashboard
-            </RouterLink>
-        </li>
-        <li>
             <RouterLink to="/records" active-class="active">
                 <PhFolders size="20" weight="bold" /> Registros
             </RouterLink>
+        </li>
+        <li>
+          <RouterLink to="/investments" active-class="active">
+            <PhTrendUp size="20" weight="bold" /> Investimentos
+          </RouterLink>
         </li>
         <li>
         <RouterLink to="/copilot" class="btn-ia" active-class="active-ai">
@@ -218,6 +218,7 @@
         font-weight: 700;
         color: var(--text-primary);
         letter-spacing: -0.5px;
+        text-decoration: none;
     }
     
     .logo-img {
