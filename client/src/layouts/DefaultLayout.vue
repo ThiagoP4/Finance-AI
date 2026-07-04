@@ -522,7 +522,7 @@
       color: var(--bg-card);
     }
     .content-area {
-      padding: 2rem;
+      padding: 1.5rem;
       max-width: 1200px;
       margin: 0 auto;
       animation: fadeIn 0.5s ease-out;

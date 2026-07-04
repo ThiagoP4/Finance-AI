@@ -1,10 +1,101 @@
 <script setup lang="ts">
+    import  { ref, onMounted } from 'vue';
     import { storeToRefs } from "pinia";
-    import { PhArrowDownLeft, PhArrowUpRight, PhChartBar, PhCreditCard } from '@phosphor-icons/vue';
-
+    import { PhArrowDownLeft, PhArrowUpRight, PhChartBar, PhCreditCard, PhListDashes } from '@phosphor-icons/vue';
     import { useProfileStore } from "../stores/useProfileStore";
+    import { supabase } from '../services/supabase';
+
     const profileStore = useProfileStore();
-    const { userName } = storeToRefs(profileStore);
+    const { userName, myCards } = storeToRefs(profileStore);
+
+   const totalIncome = ref(0);
+   const totalExpense = ref(0);
+   const currentBalance = ref(0);
+
+   const recentTransactions = ref<any[]>([]);
+
+   const fetchFinancialSummary = async () => {
+    try {
+        const now = new Date();
+        
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+        const today = now.toISOString().split('T')[0];
+
+        const { data: incomes } = await supabase
+            .from('fin_income')
+            .select('value')
+            .gte('date', startOfMonth)
+            .lte('date', endOfMonth)
+            .eq('user_id', profileStore.userId)
+
+        totalIncome.value = (incomes || []).reduce((acc, curr) => acc + Number(curr.value), 0)
+
+        const { data: expenses } = await supabase
+        .from('fin_installment')
+        .select('value')
+        .gte('dueDate', startOfMonth)
+        .lte('dueDate', endOfMonth)
+
+        totalExpense.value = (expenses || []).reduce((acc, curr) => acc + Number(curr.value), 0)
+
+        currentBalance.value = totalIncome.value - totalExpense.value;
+    
+        const { data: latestIncomes } = await supabase
+            .from('fin_income')
+            .select('title, value, date')
+            .gte('date', startOfMonth)
+            .lte('date', today)
+            .order('date', { ascending: false })
+            .limit(5);
+
+        const { data: latestExpenses } = await supabase
+            .from('fin_installment')
+            .select('value, dueDate, fin_purchase!inner(title)')
+            .gte('dueDate', startOfMonth)
+            .lte('dueDate', today)
+            .order('dueDate', { ascending: false })
+            .limit(5);
+        
+        // Mesclando
+        const mappedIncomes = (latestIncomes || []).map((i: any) => ({
+            title: i.title,
+            value: Number(i.value),
+            date: i.date,
+            type: 'income'
+        }));
+        const mappedExpenses = (latestExpenses || []).map((e: any) => ({
+            title: e.fin_purchase?.title || 'Despesa',
+            value: Number(e.value),
+            date: e.dueDate,
+            type: 'expense'
+        }));
+
+        recentTransactions.value = [...mappedIncomes, ...mappedExpenses]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 5);
+            
+
+    } catch (error) {
+        console.error("Erro ao buscar dados financeiros", error);
+    }
+   }
+
+   onMounted(async () => {
+    if(myCards.value.length === 0) {
+        await profileStore.fetchProfileData();
+    }
+    await fetchFinancialSummary()
+   });
+
+   const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value)
+   };
 
 </script>
 
@@ -19,7 +110,7 @@
 
                 <!-- CARTÃO DE SALDO -->
                 <h3>Saldo disponível</h3>
-                <h2>R$ 10.000,00</h2>
+                <h2>{{ formatCurrency(currentBalance) }}</h2>
                 <div class="balance-details">
 
                     <!-- Receitas -->
@@ -29,7 +120,7 @@
                         </div>
                         <div class="financial-text">
                             <span>Receitas</span>
-                            <p>R$ 10.000,00</p>
+                            <p>{{ formatCurrency(totalIncome) }}</p>
                         </div>
                     </div>
                     
@@ -40,7 +131,7 @@
                         </div>
                         <div class="financial-text">
                             <span>Despesas</span>
-                            <p>R$ 10.000,00</p>
+                            <p>{{ formatCurrency(totalExpense) }}</p>
                         </div>
                     </div>
                 </div>
@@ -49,43 +140,59 @@
             <!-- CARTÃO DE FORMAS DE PAGAMENTO -->
             <div class="card mycards-card">
                 <h3>Meus Cartões</h3>
-                <div class="credit-card-mockup">
-                    <div class="cc-header">
-                        <PhCreditCard size="22" weight="fill" />
-                        <span>Nubank</span>
+                <div class="cards-scroll-container" v-if="myCards.length > 0">
+                    <div class="credit-card-mockup" v-for="card in myCards" :key="card.id_payment">
+                        <div class="cc-header">
+                            <PhCreditCard size="22" weight="fill" />
+                            <span class="cc-bank">{{ card.bank_name || 'Meu Banco' }}</span>
+                        </div>
+                        <div class="cc-body">
+                            <p class="cc-name"> {{ card.nickname || 'Meu Cartão' }}</p>
+                            <p class="cc-dates">Fecha dia {{ card.closing_day || 'X' }} • Vence dia {{ card.due_day || 'X' }}</p>
+                        </div>
                     </div>
-                    <div class="cc-body">
-                        <p class="cc-name">Thiago Silva</p>
-                        <p class="cc-dates">Fecha dia 1 e Vence dia 8</p>
-                    </div>
+                </div>
+                <div v-else style="color: gray; font-size: 0.9rem; text-align: center; margin-top: 1rem;">
+                    Nenhum cartão cadastrado
+                    <button class="btn-details" @click="$router.push('/settings')">
+                        <PhCreditCard size="16" /> Adicionar
+                    </button>              
                 </div>
             </div>
 
             <!-- CARTÃO DE ULTIMAS TRANSAÇÕES-->
             <div class="card transactions-card">
-                <h3>Últimas Transações</h3>
-
+                <div class="card-header">
+                    <h3>Últimas Transações</h3>
+                    <button class="btn-details" @click="$router.push('/records')">
+                        <PhListDashes size="16" /> Ver mais
+                    </button>
+                </div>
                 <div class="transactions-list">
-                    <div class="transaction-item">
-                        <div class="tx-icon tx-expense">
+                    <div class="transaction-item" v-for="(tx, index) in recentTransactions" :key="index">
+                        <div class="tx-icon tx-expense" :style="{ color: tx.type === 'income' ? '#22c55e' : '#ef4444' }">
                             <span>$</span>
                         </div>
                         <div class="tx-info">
-                            <h4>Uber</h4>
-                            <p>14/06/2026</p>
+                            <h4>{{ tx.title }}</h4>
+                            <p>{{ new Date(tx.date).toLocaleDateString('pt-BR') }}</p>
                         </div>
-                        <div class="tx-value negative">
-                            -R$ 150,00
+                        <div class="tx-value" :class="{ 'negative': tx.type === 'expense' }">
+                            {{ tx.type === 'expense' ? '-' : '+' }} {{ formatCurrency(tx.value) }}
                         </div>
+                    </div>
+                    
+                    <div v-if="recentTransactions.length === 0" style="color: gray; text-align: center;">
+                        Sem transações neste mês.
                     </div>
                 </div>
             </div>
 
             <!-- CARTÃO DE ESTATÍSTICAS -->
             <div class="card statistics-card">
-                <div class="stats-header">
+                <div class="card-header">
                     <h3>Estatísticas</h3>
-                    <button class="btn-details">
+                    <button class="btn-details" @click="$router.push('/dashboard')">
                         <PhChartBar size="16" /> Detalhes
                     </button>
                 </div>
@@ -106,7 +213,7 @@
 .home-container {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1rem;
 }
 .home-header h1 {
     font-size: 2rem;
@@ -124,13 +231,13 @@
 .dashboard-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
 .card {
     background-color: var(--bg-card);
     border-radius: 16px;
-    padding: 1.5rem;
+    padding: 1.25rem;
     border: 1px solid var(--border-color);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
@@ -204,14 +311,37 @@
 
 /* === FORMAS DE PAGAMENTO === */
 
+.cards-scroll-container {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    gap: 1rem;
+    padding-bottom: 0.8rem;
+    margin-top: 1rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+
+.cards-scroll-container::-webkit-scrollbar {
+    height: 6px;
+}
+
+.cards-scroll-container::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 4px;
+}
+
 .credit-card-mockup {
-    background: linear-gradient(135deg, #2a2a2a 0%, #151515 100%);
+    min-width: 260px;
+    height: 160px;
+    flex-shrink: 0;
+    background-color: var(--bg-page);
     padding: 1.5rem;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    gap: 2.5rem;
+    justify-content: space-between;
 }
 
 .cc-header {
@@ -248,19 +378,25 @@
     margin: 0;
 }
 
+.mycards-card {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
 
 /* === TRANSAÇÕES === */
 .transactions-card h3, .stats-card h3, .mycards-card h3 {
     font-size: 0.95rem;
     color: var(--text-primary);
     font-weight: 600;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem; /* Reduzido de 1.5rem */
 }
 
 .transactions-list {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
+    gap: 0.8rem; /* Reduzido de 1.2rem */
 }
 
 .transaction-item {
@@ -270,14 +406,14 @@
 }
 
 .tx-icon {
-    width: 36px;
-    height: 36px;
+    width: 32px; /* Reduzido de 36px */
+    height: 32px; /* Reduzido de 36px */
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    margin-right: 1rem;
+    margin-right: 0.8rem; /* Reduzido de 1rem */
 }
 
 .tx-expense {
@@ -291,7 +427,7 @@
 
 .tx-info h4 {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.9rem; /* Levemente reduzido */
     color: var(--text-primary);
     font-weight: 600;
 }
@@ -299,12 +435,12 @@
     margin: 0;
     font-size: 0.75rem;
     color: var(--text-secondary);
-    margin-top: 0.2rem;
+    margin-top: 0.1rem;
 }
 
 .tx-value {
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .tx-value.negative {
@@ -312,13 +448,15 @@
 }
 
 
-/* === ESTATÍSTICAS === */
-.stats-header {
+.card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem; /* Reduzido de 1.5rem */
 }
+
+
+/* === ESTATÍSTICAS === */
 
 .stats-header h3 {
     margin-bottom: 0;
@@ -331,9 +469,9 @@
     background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    padding: 0.4rem 0.8rem; 
+    padding: 0.3rem 0.6rem; /* Reduzido o padding */
     border-radius: 6px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -344,7 +482,7 @@
 
 .chart-placeholder {
     width: 100%;
-    height: 180px;
+    height: 150px; /* Reduzido de 180px */
     background: rgba(255, 255, 255, 0.03);
     border-radius: 8px;
     border: 1px dashed var(--border-color);
