@@ -276,10 +276,6 @@
     };
 
     const deleteRegistry = async (id: number) => {
-        const msg = currentTab.value === 'categorias' 
-        ? 'Excluir Categoria (todas as compras associadas também serão excluídas)' 
-        : currentTab.value === 'compras' ? 'Excluir Compra' : 'Excluir Entrada';
-        if (!confirm(`Deseja realmente ${msg}?`)) return
         try {
             let table = '';
             let columnId = '';

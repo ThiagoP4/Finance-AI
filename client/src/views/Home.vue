@@ -97,6 +97,17 @@
     }).format(value)
    };
 
+   const formatDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    // Pega apenas a data (YYYY-MM-DD) e descarta a hora (T00:00:00...)
+    const onlyDate = dateStr.split('T')[0] || "";
+    const parts = onlyDate.split('-');
+    if (parts.length === 3){
+         return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return new Date(dateStr).toLocaleDateString('pt-BR');
+   };
+
 </script>
 
 <template>
@@ -170,14 +181,17 @@
                 </div>
                 <div class="transactions-list">
                     <div class="transaction-item" v-for="(tx, index) in recentTransactions" :key="index">
-                        <div class="tx-icon tx-expense" :style="{ color: tx.type === 'income' ? '#22c55e' : '#ef4444' }">
+                        <div class="tx-icon" :style="{ 
+                            color: tx.type === 'income' ? 'var(--success-color)' : 'var(--danger-color)',
+                            backgroundColor: tx.type === 'income' ? 'var(--success-bg)' : 'var(--danger-bg)'
+                        }">
                             <span>$</span>
                         </div>
                         <div class="tx-info">
                             <h4>{{ tx.title }}</h4>
-                            <p>{{ new Date(tx.date).toLocaleDateString('pt-BR') }}</p>
+                            <p>{{ formatDate(tx.date) }}</p>
                         </div>
-                        <div class="tx-value" :class="{ 'negative': tx.type === 'expense' }">
+                        <div class="tx-value" :class="{ 'negative': tx.type === 'expense', 'positive': tx.type === 'income' }">
                             {{ tx.type === 'expense' ? '-' : '+' }} {{ formatCurrency(tx.value) }}
                         </div>
                     </div>
@@ -245,13 +259,13 @@
 
 /* === SALDO === */
 .balance-card {
-    background: linear-gradient(145deg, #2a1f1f 0%, #1e1515 100%);
-    border: 1px solid rgba(239, 68, 68, 0.1);
+    background: var(--card-highlight-bg);
+    border: 1px solid var(--card-highlight-border);
 }
 
 .balance-card h3 {
     font-size: 0.9rem;
-    color: var(--text-secondary);
+    color: var(--card-highlight-title);
     font-weight: 500;
     margin-bottom: 0.5rem;
 }
@@ -259,7 +273,7 @@
 .balance-card h2 {
     font-size: 2.8rem; /* Tamanho Gigante igual ao layout */
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--card-highlight-text);
     margin-bottom: 2rem;
     letter-spacing: -1px;
 }
@@ -285,13 +299,13 @@
 }
 
 .icon-income {
-    background-color: rgba(34, 197, 94, 0.15);
-    color: #22c55e;
+    background-color: var(--success-bg);
+    color: var(--success-text);
 }
 
 .icon-expense {
-    background-color: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
+    background-color: var(--danger-bg);
+    color: var(--danger-text);
 }
 
 .financial-text span {
@@ -335,10 +349,10 @@
     min-width: 260px;
     height: 160px;
     flex-shrink: 0;
-    background-color: var(--bg-page);
+    background: var(--card-nested-bg);
     padding: 1.5rem;
     border-radius: 12px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--card-nested-border);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -364,7 +378,7 @@
 }
 
 .cc-number {
-    font-family: 'Courier New', Courier, monospace; /* Dá aquela cara de número de cartão */
+    font-family: 'Courier New', Courier, monospace;
     font-size: 1.15rem;
     letter-spacing: 2px;
     color: var(--text-primary);
@@ -390,13 +404,13 @@
     font-size: 0.95rem;
     color: var(--text-primary);
     font-weight: 600;
-    margin-bottom: 1rem; /* Reduzido de 1.5rem */
+    margin-bottom: 1rem;
 }
 
 .transactions-list {
     display: flex;
     flex-direction: column;
-    gap: 0.8rem; /* Reduzido de 1.2rem */
+    gap: 0.8rem;
 }
 
 .transaction-item {
@@ -406,19 +420,14 @@
 }
 
 .tx-icon {
-    width: 32px; /* Reduzido de 36px */
-    height: 32px; /* Reduzido de 36px */
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    margin-right: 0.8rem; /* Reduzido de 1rem */
-}
-
-.tx-expense {
-    background-color: rgba(255, 255, 255, 0.05); 
-    color: #a1a1aa;
+    margin-right: 0.8rem;
 }
 
 .tx-info {
@@ -427,7 +436,7 @@
 
 .tx-info h4 {
     margin: 0;
-    font-size: 0.9rem; /* Levemente reduzido */
+    font-size: 0.9rem;
     color: var(--text-primary);
     font-weight: 600;
 }
@@ -444,7 +453,11 @@
 }
 
 .tx-value.negative {
-    color: #ef4444;
+    color: var(--danger-color);
+}
+
+.tx-value.positive {
+    color: var(--success-color);
 }
 
 
@@ -452,7 +465,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem; /* Reduzido de 1.5rem */
+    margin-bottom: 1rem;
 }
 
 
@@ -469,7 +482,7 @@
     background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    padding: 0.3rem 0.6rem; /* Reduzido o padding */
+    padding: 0.3rem 0.6rem;
     border-radius: 6px;
     font-size: 0.75rem;
     cursor: pointer;
@@ -482,7 +495,7 @@
 
 .chart-placeholder {
     width: 100%;
-    height: 150px; /* Reduzido de 180px */
+    height: 150px;
     background: rgba(255, 255, 255, 0.03);
     border-radius: 8px;
     border: 1px dashed var(--border-color);
