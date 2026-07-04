@@ -49,7 +49,11 @@
                 });
                 if (error) throw error;
                 showAlert('Login realizado com sucesso!', 'success');
-                router.push('/');
+                
+                // Pequeno atraso para garantir que a sessão seja atualizada no local storage 
+                setTimeout(() => {
+                    router.push('/');
+                }, 100);
             }
         } catch (error) {
             console.error('Erro de autenticação:', error);

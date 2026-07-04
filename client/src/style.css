@@ -23,8 +23,21 @@
     --accent-color: hsl(346, 77%, 50%);
     --primary-gradient: linear-gradient(135deg, var(--accent-color), var(--primary-color));
 
-    --success-color: hsl(142, 71%, 45%);
-    --danger-color: hsl(0, 84%, 60%);
+    /* --- Estados Globais (Sucesso / Perigo) --- */
+    --success-color: hsl(142, 71%, 35%);
+    --success-bg: hsla(142, 71%, 45%, 0.12);
+    --danger-color: hsl(0, 84%, 50%);
+    --danger-bg: hsla(0, 84%, 60%, 0.12);
+
+    /* --- Cartões de Destaque (Destaques da UI) --- */
+    --card-highlight-bg: linear-gradient(145deg, hsl(346, 80%, 97%) 0%, hsl(346, 80%, 93%) 100%);
+    --card-highlight-border: hsla(346, 77%, 50%, 0.12);
+    --card-highlight-text: hsl(346, 77%, 15%);
+    --card-highlight-title: hsl(346, 70%, 30%);
+    
+    /* --- Cartões Aninhados ou Secundários --- */
+    --card-nested-bg: hsl(30, 20%, 92%);
+    --card-nested-border: hsl(30, 15%, 85%);
 }
 
 /* Quando a classe .dark for adicionada no HTML */
@@ -47,6 +60,22 @@
 
     --danger-color: hsl(0, 62%, 35%);
     --success-color: hsl(152, 76%, 40%);
+
+    /* --- Estados Globais (Sucesso / Perigo) --- */
+    --success-color: #22c55e;
+    --success-bg: rgba(34, 197, 94, 0.15);
+    --danger-color: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.15);
+
+    /* --- Cartões de Destaque (Destaques da UI) --- */
+    --card-highlight-bg: linear-gradient(145deg, #2a1f1f 0%, #1e1515 100%);
+    --card-highlight-border: rgba(239, 68, 68, 0.1);
+    --card-highlight-text: hsl(30, 20%, 92%);
+    --card-highlight-title: hsl(30, 10%, 60%);
+    
+    /* --- Cartões Aninhados ou Secundários --- */
+    --card-nested-bg: hsl(20, 12%, 14%);
+    --card-nested-border: hsl(20, 12%, 18%);
 }
 
 /* Reset que já existia */
