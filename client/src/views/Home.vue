@@ -3,9 +3,11 @@
     import { storeToRefs } from "pinia";
     import { PhArrowDownLeft, PhArrowUpRight, PhChartBar, PhCreditCard, PhListDashes } from '@phosphor-icons/vue';
     import { useProfileStore } from "../stores/useProfileStore";
+    import { usePiggybankStore } from "../stores/usePiggybankStore";
     import { supabase } from '../services/supabase';
 
     const profileStore = useProfileStore();
+    const piggybankStore = usePiggybankStore();
     const { userName, myCards } = storeToRefs(profileStore);
 
    const totalIncome = ref(0);
@@ -41,6 +43,16 @@
 
         totalExpense.value = (expenses || []).reduce((acc, curr) => acc + Number(curr.value), 0)
 
+        // Busca os cofrinhos para calcular o Total Guardado (que compõe saldo)
+        await piggybankStore.fetchPiggybanks();
+        const totalGuardado = piggybankStore.piggybanks
+            .filter(p => p.composes_balance === true)
+            .reduce((acc, curr) => acc + Number(curr.current_amount), 0);
+
+        // A Receita na tela também deve mostrar esse dinheiro extra guardado
+        totalIncome.value = totalIncome.value + totalGuardado;
+
+        // Saldo disponível = Receitas (já com o valor do cofrinho) - Despesas
         currentBalance.value = totalIncome.value - totalExpense.value;
     
         const { data: latestIncomes } = await supabase
